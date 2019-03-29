@@ -2,7 +2,6 @@ import * as React from 'react'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import * as keycode from 'keycode'
-import { getLeft } from 'graphiql/dist/utility/elementPosition'
 import FieldDoc from './FieldDoc'
 import ColumnDoc from './ColumnDoc'
 import {
@@ -15,17 +14,18 @@ import {
 import Spinner from '../../Spinner'
 import { columnWidth } from '../../../constants'
 import RootColumn from './RootColumn'
-import * as cn from 'classnames'
 import {
   serialize,
   getElementRoot,
   serializeRoot,
   getElement,
 } from '../util/stack'
-import { GraphQLSchema } from 'graphql'
 import { getSessionDocs } from '../../../state/docs/selectors'
 import { getSelectedSessionIdFromRoot } from '../../../state/sessions/selectors'
 import { createStructuredSelector } from 'reselect'
+import { SideTabContentProps } from '../ExplorerTabs/SideTabs'
+import { ErrorContainer } from './ErrorContainer'
+import { styled } from '../../../styled'
 
 interface StateFromProps {
   docs: {
@@ -44,24 +44,17 @@ interface DispatchFromProps {
   changeKeyMove: (sessionId: string, move: boolean) => any
 }
 
-export interface Props {
-  schema: GraphQLSchema
-  sessionId: string
-}
-
 export interface State {
   searchValue: string
   widthMap: any
 }
 
 class GraphDocs extends React.Component<
-  Props & StateFromProps & DispatchFromProps,
+  SideTabContentProps & StateFromProps & DispatchFromProps,
   State
 > {
   ref
-  private refDocExplorer: any
-  private clientX: number = 0
-  private clientY: number = 0
+  // private refDocExplorer: any;
 
   constructor(props) {
     super(props)
@@ -72,7 +65,7 @@ class GraphDocs extends React.Component<
     ;(window as any).d = this
   }
 
-  componentWillReceiveProps(nextProps: Props & StateFromProps) {
+  componentWillReceiveProps(nextProps: SideTabContentProps & StateFromProps) {
     // If user use default column size % columnWidth
     // Make the column follow the clicks
     if (
@@ -86,13 +79,7 @@ class GraphDocs extends React.Component<
   }
 
   setWidth(props: any = this.props) {
-    requestAnimationFrame(() => {
-      const width = this.getWidth(props)
-      this.props.changeWidthDocs(
-        props.sessionId,
-        Math.min(width, window.innerWidth - 86),
-      )
-    })
+    this.props.setWidth(props)
   }
 
   getWidth(props: any = this.props) {
@@ -109,10 +96,8 @@ class GraphDocs extends React.Component<
   }
 
   render() {
-    const { docsOpen, docsWidth, navStack } = this.props.docs
+    const { navStack } = this.props.docs
     const { schema } = this.props
-    const docsStyle = { width: docsOpen ? docsWidth : 0 }
-
     let emptySchema
     if (schema === undefined) {
       // Schema is undefined when it is being loaded via introspection.
@@ -120,145 +105,40 @@ class GraphDocs extends React.Component<
     } else if (schema === null) {
       // Schema is null when it explicitly does not exist, typically due to
       // an error during introspection.
-      emptySchema = (
-        <div className="error-container">{'No Schema Available'}</div>
-      )
+      emptySchema = <ErrorContainer>{'No Schema Available'}</ErrorContainer>
     }
 
     return (
-      <div
-        className={cn('graph-docs docExplorerWrap docs', { open: docsOpen })}
-        style={docsStyle}
+      <DocsExplorerContainer
+        onKeyDown={this.handleKeyDown}
+        tabIndex={0}
         ref={this.setRef}
       >
-        <style jsx={true} global={true}>{`
-          .graphiql-container .doc-category-title {
-            @p: .mh0, .ph16;
-            border: none;
-          }
-          .doc-type-description p {
-            @p: .pa16, .f14;
-          }
-          .graphiql-container .doc-type-description {
-            @p: .mh0, .ph16, .f14;
-          }
-          .doc-header .doc-category-item {
-            @p: .f16;
-            word-wrap: break-word;
-          }
-          .doc-description p {
-            @p: .f14;
-          }
-        `}</style>
-        <style jsx={true}>{`
-          .docs :global(.doc-category-title) {
-            @p: .pa16, .f14;
-          }
-          .graph-docs :global(code) {
-            @p: .mono, .br2;
-            padding: 1px 2px;
-            background: rgba(0, 0, 0, 0.06);
-          }
-          .graph-docs {
-            @p: .absolute, .h100;
-            right: -2px;
-          }
-          .graph-docs.open {
-            z-index: 2000;
-          }
-          .docs-button {
-            @p: .absolute, .white, .bgGreen, .pv6, .z2, .ttu, .fw6, .f12, .ph10,
-              .pointer;
-            box-shadow: -1px 1px 6px 0 rgba(0, 0, 0, 0.3);
-            line-height: 17px;
-            letter-spacing: 0.45px;
-            padding-bottom: 8px;
-            transform: rotate(-90deg);
-            left: -50px;
-            top: 129px;
-            border-top-left-radius: 2px;
-            border-top-right-radius: 2px;
-          }
-          .doc-explorer {
-            @p: .flex, .relative, .h100;
-            letter-spacing: 0.3px;
-            outline: none;
-            box-shadow: -1px 1px 6px 0 rgba(0, 0, 0, 0.3);
-          }
-          .doc-explorer-container {
-            @p: .flex, .relative, .h100, .w100;
-            overflow-x: auto;
-            overflow-y: hidden;
-          }
-          .doc-explorer:before {
-            @p: .top0, .bottom0, .bgGreen, .absolute, .z3;
-            left: 0px;
-            content: '';
-            width: 6px;
-          }
-          .doc-explorer-gradient {
-            @p: .z1, .absolute, .top0, .bottom0;
-            pointer-events: none;
-            content: '';
-            width: 20px;
-            left: 0px;
-            background: linear-gradient(
-              to right,
-              rgba(255, 255, 255, 1) 30%,
-              rgba(255, 255, 255, 0)
-            );
-          }
-          .docExplorerResizer {
-            @p: .top0, .bottom0, .absolute, .z5;
-            cursor: col-resize;
-            left: -7px;
-            content: '';
-            width: 20px;
-          }
-        `}</style>
-        <div className="docs-button" onClick={this.handleToggleDocs}>
-          Schema
-        </div>
-        <div
-          className="docExplorerResizer"
-          onMouseDown={this.handleDocsResizeStart}
-        />
-        <div className="doc-explorer-gradient" />
-        <div
-          className="doc-explorer"
-          onKeyDown={this.handleKeyDown}
-          onMouseMove={this.handleMouseMove}
-          tabIndex={0}
-          ref={this.setDocExplorerRef}
-        >
-          <div className="doc-explorer-container">
-            {emptySchema && <ColumnDoc>{emptySchema}</ColumnDoc>}
-            {!emptySchema &&
-              schema && (
-                <RootColumn
-                  schema={schema}
-                  width={this.state.widthMap.root || columnWidth - 1}
-                  searchValue={this.state.searchValue}
-                  handleSearch={this.handleSearch}
-                  sessionId={this.props.sessionId}
-                />
-              )}
-            {navStack.map((stack, index) => (
-              <ColumnDoc
-                key={index}
-                width={this.state.widthMap[stack.field.path] || columnWidth}
-              >
-                <FieldDoc
-                  schema={schema}
-                  field={stack.field}
-                  level={index + 1}
-                  sessionId={this.props.sessionId}
-                />
-              </ColumnDoc>
-            ))}
-          </div>
-        </div>
-      </div>
+        {emptySchema && <ColumnDoc>{emptySchema}</ColumnDoc>}
+        {!emptySchema &&
+          schema && (
+            <RootColumn
+              schema={schema}
+              width={this.state.widthMap.root || columnWidth - 1}
+              searchValue={this.state.searchValue}
+              handleSearch={this.handleSearch}
+              sessionId={this.props.sessionId}
+            />
+          )}
+        {navStack.map((stack, index) => (
+          <ColumnDoc
+            key={index}
+            width={this.state.widthMap[stack.field.path] || columnWidth}
+          >
+            <FieldDoc
+              schema={schema}
+              field={stack.field}
+              level={index + 1}
+              sessionId={this.props.sessionId}
+            />
+          </ColumnDoc>
+        ))}
+      </DocsExplorerContainer>
     )
   }
 
@@ -267,24 +147,11 @@ class GraphDocs extends React.Component<
   }
 
   public showDocFromType = type => {
-    this.props.setDocsVisible(this.props.sessionId, true)
     this.props.addStack(this.props.sessionId, type, 0, 0)
-  }
-
-  private setDocExplorerRef = ref => {
-    this.refDocExplorer = ref
   }
 
   private handleSearch = (value: string) => {
     this.setState({ searchValue: value })
-  }
-
-  private handleToggleDocs = () => {
-    if (!this.props.docs.docsOpen && this.refDocExplorer) {
-      this.refDocExplorer.focus()
-    }
-    this.props.toggleDocs(this.props.sessionId)
-    this.setWidth()
   }
 
   private handleKeyDown = e => {
@@ -376,58 +243,6 @@ class GraphDocs extends React.Component<
         break
     }
   }
-
-  private handleDocsResizeStart = downEvent => {
-    downEvent.preventDefault()
-
-    const hadWidth = this.props.docs.docsWidth
-    const offset = downEvent.clientX - getLeft(downEvent.target)
-
-    let onMouseMove: any = moveEvent => {
-      if (moveEvent.buttons === 0) {
-        return onMouseUp()
-      }
-
-      const app = this.ref
-      const cursorPos = moveEvent.clientX - getLeft(app) - offset
-      const newSize = app.clientWidth - cursorPos
-      const maxSize = window.innerWidth - 50
-      const docsSize = maxSize < newSize ? maxSize : newSize
-
-      if (docsSize < 100) {
-        this.props.setDocsVisible(this.props.sessionId, false)
-      } else {
-        this.props.setDocsVisible(this.props.sessionId, true)
-        this.props.changeWidthDocs(this.props.sessionId, docsSize)
-      }
-    }
-
-    let onMouseUp: any = () => {
-      if (!this.props.docs.docsOpen) {
-        this.props.changeWidthDocs(this.props.sessionId, hadWidth)
-      }
-
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
-      onMouseMove = null
-      onMouseUp = null
-    }
-
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
-  }
-
-  private handleMouseMove = e => {
-    this.clientX = e.clientX
-    this.clientY = e.clientY
-    if (
-      this.props.docs.keyMove &&
-      this.clientX !== e.clientX &&
-      this.clientY !== e.clientY
-    ) {
-      this.props.changeKeyMove(this.props.sessionId, false)
-    }
-  }
 }
 
 const mapDispatchToProps = dispatch =>
@@ -447,9 +262,19 @@ const mapStateToProps = createStructuredSelector({
   sessionId: getSelectedSessionIdFromRoot,
 })
 
-export default connect<StateFromProps, DispatchFromProps, Props>(
+export default connect<StateFromProps, DispatchFromProps, SideTabContentProps>(
   mapStateToProps,
   mapDispatchToProps,
   null,
   { withRef: true },
 )(GraphDocs)
+
+const DocsExplorerContainer = styled.div`
+  display: flex;
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  outline: none !important;
+`

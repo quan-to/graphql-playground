@@ -10,12 +10,22 @@ import {
   theme as styledTheme,
   keyframes,
 } from '../styled'
-import OldThemeProvider from './Theme/ThemeProvider'
+import {
+  darkColours,
+  lightColours,
+  darkEditorColours,
+  lightEditorColours,
+  EditorColours,
+} from '../styled/theme'
+// import OldThemeProvider from './Theme/ThemeProvider'
 import { getActiveEndpoints } from './util'
 import { ISettings } from '../types'
-import { createStructuredSelector } from 'reselect'
 import { connect } from 'react-redux'
-import { getTheme } from '../state/workspace/reducers'
+import { getTheme, getSettings } from '../state/workspace/reducers'
+import { Session, Tab } from '../state/sessions/reducers'
+import { ApolloLink } from 'apollo-link'
+import { injectTabs } from '../state/workspace/actions'
+import { buildSchema, buildClientSchema, GraphQLSchema } from 'graphql'
 
 function getParameterByName(name: string, uri?: string): string | null {
   const url = uri || window.location.href
@@ -34,6 +44,8 @@ export interface PlaygroundWrapperProps {
   subscriptionEndpoint?: string
   setTitle?: boolean
   settings?: ISettings
+  shareEnabled?: string
+  fixedEndpoint?: string
   folderName?: string
   configString?: string
   showNewWorkspace?: boolean
@@ -47,10 +59,20 @@ export interface PlaygroundWrapperProps {
   config?: GraphQLConfig
   configPath?: string
   injectedState?: any
+  createApolloLink?: (
+    session: Session,
+    subscriptionEndpoint?: string,
+  ) => ApolloLink
+  tabs?: Tab[]
+  schema?: { __schema: any } // introspection result
+  codeTheme?: EditorColours
+  workspaceName?: string
+  headers?: any
 }
 
 export interface ReduxProps {
   theme: string
+  injectTabs: (tabs: Tab[]) => void
 }
 
 export interface State {
@@ -64,6 +86,7 @@ export interface State {
   activeProjectName?: string
   activeEnv?: string
   headers?: any
+  schema?: GraphQLSchema
 }
 
 class PlaygroundWrapper extends React.Component<
@@ -75,6 +98,11 @@ class PlaygroundWrapper extends React.Component<
     super(props)
     ;(global as any).m = this
 
+    this.state = this.mapPropsToState(props)
+    this.removeLoader()
+  }
+
+  mapPropsToState(props: PlaygroundWrapperProps): State {
     const configIsYaml = props.configString
       ? this.isConfigYaml(props.configString)
       : false
@@ -104,9 +132,7 @@ class PlaygroundWrapper extends React.Component<
     subscriptionEndpoint =
       this.normalizeSubscriptionUrl(endpoint, subscriptionEndpoint) || undefined
 
-    this.removeLoader()
-
-    this.state = {
+    return {
       endpoint: this.absolutizeUrl(endpoint),
       platformToken:
         props.platformToken ||
@@ -170,16 +196,20 @@ class PlaygroundWrapper extends React.Component<
       }`
     }
 
-    return endpoint
+    return endpoint.replace(/^http/, 'ws')
   }
 
   componentWillReceiveProps(nextProps: PlaygroundWrapperProps & ReduxProps) {
+    // Reactive props (props that cause a state change upon being changed)
     if (
-      nextProps.configString !== this.props.configString &&
-      nextProps.configString
+      nextProps.endpoint !== this.props.endpoint ||
+      nextProps.endpointUrl !== this.props.endpointUrl ||
+      nextProps.subscriptionEndpoint !== this.props.subscriptionEndpoint ||
+      nextProps.configString !== this.props.configString ||
+      nextProps.platformToken !== this.props.platformToken ||
+      nextProps.config !== this.props.config
     ) {
-      const configIsYaml = this.isConfigYaml(nextProps.configString)
-      this.setState({ configIsYaml })
+      this.setState(this.mapPropsToState(nextProps))
       this.setInitialWorkspace(nextProps)
     }
   }
@@ -242,6 +272,35 @@ class PlaygroundWrapper extends React.Component<
       this.removePlaygroundInClass()
     }, 5000)
     this.setInitialWorkspace()
+    if (this.props.tabs) {
+      this.props.injectTabs(this.props.tabs)
+    } else {
+      const query = getParameterByName('query')
+      if (query) {
+        const endpoint = getParameterByName('endpoint') || this.state.endpoint
+        this.props.injectTabs([{ query, endpoint }])
+      } else {
+        const tabsString = getParameterByName('tabs')
+        if (tabsString) {
+          try {
+            const tabs = JSON.parse(tabsString)
+            this.props.injectTabs(tabs)
+          } catch (e) {
+            //
+          }
+        }
+      }
+    }
+
+    if (this.props.schema) {
+      // in this case it's sdl
+      if (typeof this.props.schema === 'string') {
+        this.setState({ schema: buildSchema(this.props.schema) })
+        // if it's an object, it must be an introspection query
+      } else {
+        this.setState({ schema: buildClientSchema(this.props.schema) })
+      }
+    }
   }
 
   setInitialWorkspace(props = this.props) {
@@ -253,7 +312,9 @@ class PlaygroundWrapper extends React.Component<
         activeEnv.projectName,
       )
       const endpoint = endpoints.endpoint
-      const subscriptionEndpoint = endpoints.subscriptionEndpoint
+      const subscriptionEndpoint =
+        endpoints.subscriptionEndpoint ||
+        this.normalizeSubscriptionUrl(endpoint, endpoints.subscriptionEndpoint)
       const headers = endpoints.headers
       this.setState({
         endpoint,
@@ -279,52 +340,71 @@ class PlaygroundWrapper extends React.Component<
       </Helmet>
     ) : null
 
+    const defaultHeaders = this.props.headers || {}
+    const stateHeaders = this.state.headers || {}
+    const combinedHeaders = { ...defaultHeaders, ...stateHeaders }
+
     const { theme } = this.props
     return (
       <div>
         {title}
-        <ThemeProvider theme={{ ...styledTheme, mode: theme } as any}>
-          <OldThemeProvider theme={theme}>
-            <App>
-              {this.props.config &&
-                this.state.activeEnv && (
-                  <ProjectsSideNav
-                    config={this.props.config}
-                    folderName={this.props.folderName || 'GraphQL App'}
-                    theme={theme}
-                    activeEnv={this.state.activeEnv}
-                    onSelectEnv={this.handleSelectEnv}
-                    onNewWorkspace={this.props.onNewWorkspace}
-                    showNewWorkspace={Boolean(this.props.showNewWorkspace)}
-                    isElectron={Boolean(this.props.isElectron)}
-                    activeProjectName={this.state.activeProjectName}
-                    configPath={this.props.configPath}
-                  />
-                )}
-              <Playground
-                endpoint={this.state.endpoint}
-                subscriptionEndpoint={this.state.subscriptionEndpoint}
-                shareUrl={this.state.shareUrl}
-                onChangeEndpoint={this.handleChangeEndpoint}
-                onChangeSubscriptionsEndpoint={
-                  this.handleChangeSubscriptionsEndpoint
-                }
-                adminAuthToken={this.state.platformToken}
-                getRef={this.getPlaygroundRef}
-                config={this.props.config!}
-                configString={this.state.configString!}
-                configIsYaml={this.state.configIsYaml!}
-                canSaveConfig={Boolean(this.props.canSaveConfig)}
-                onChangeConfig={this.handleChangeConfig}
-                onSaveConfig={this.handleSaveConfig}
-                onUpdateSessionCount={this.handleUpdateSessionCount}
-                fixedEndpoints={Boolean(this.state.configString)}
-                headers={this.state.headers}
-                configPath={this.props.configPath}
-                workspaceName={this.state.activeProjectName}
-              />
-            </App>
-          </OldThemeProvider>
+        <ThemeProvider
+          theme={{
+            ...styledTheme,
+            mode: theme,
+            colours: theme === 'dark' ? darkColours : lightColours,
+            editorColours: {
+              ...(theme === 'dark' ? darkEditorColours : lightEditorColours),
+              ...this.props.codeTheme,
+            },
+            settings: this.props.settings,
+          }}
+        >
+          <App>
+            {this.props.config &&
+              this.state.activeEnv && (
+                <ProjectsSideNav
+                  config={this.props.config}
+                  folderName={this.props.folderName || 'GraphQL App'}
+                  theme={theme}
+                  activeEnv={this.state.activeEnv}
+                  onSelectEnv={this.handleSelectEnv}
+                  onNewWorkspace={this.props.onNewWorkspace}
+                  showNewWorkspace={Boolean(this.props.showNewWorkspace)}
+                  isElectron={Boolean(this.props.isElectron)}
+                  activeProjectName={this.state.activeProjectName}
+                  configPath={this.props.configPath}
+                />
+              )}
+            <Playground
+              endpoint={this.state.endpoint}
+              shareEnabled={this.props.shareEnabled}
+              subscriptionEndpoint={this.state.subscriptionEndpoint}
+              shareUrl={this.state.shareUrl}
+              onChangeEndpoint={this.handleChangeEndpoint}
+              onChangeSubscriptionsEndpoint={
+                this.handleChangeSubscriptionsEndpoint
+              }
+              adminAuthToken={this.state.platformToken}
+              getRef={this.getPlaygroundRef}
+              config={this.props.config!}
+              configString={this.state.configString!}
+              configIsYaml={this.state.configIsYaml!}
+              canSaveConfig={Boolean(this.props.canSaveConfig)}
+              onChangeConfig={this.handleChangeConfig}
+              onSaveConfig={this.handleSaveConfig}
+              onUpdateSessionCount={this.handleUpdateSessionCount}
+              fixedEndpoints={Boolean(this.state.configString)}
+              fixedEndpoint={this.props.fixedEndpoint}
+              headers={combinedHeaders}
+              configPath={this.props.configPath}
+              workspaceName={
+                this.props.workspaceName || this.state.activeProjectName
+              }
+              createApolloLink={this.props.createApolloLink}
+              schema={this.state.schema}
+            />
+          </App>
         </ThemeProvider>
       </div>
     )
@@ -347,10 +427,8 @@ class PlaygroundWrapper extends React.Component<
 
   handleSaveConfig = () => {
     /* tslint:disable-next-line */
-    console.log('handleSaveConfig called')
     if (typeof this.props.onSaveConfig === 'function') {
       /* tslint:disable-next-line */
-      console.log('calling this.props.onSaveConfig', this.state.configString)
       this.props.onSaveConfig(this.state.configString!)
     }
   }
@@ -450,11 +528,16 @@ class PlaygroundWrapper extends React.Component<
   }
 }
 
-const mapStateToProps = createStructuredSelector({
-  theme: getTheme,
-})
+const mapStateToProps = (state, ownProps) => {
+  const theme = ownProps.theme || getTheme(state, ownProps.settings)
+  const settings = getSettings(state)
+  return { theme, settings }
+}
 
-export default connect(mapStateToProps)(PlaygroundWrapper)
+export default connect(
+  mapStateToProps,
+  { injectTabs },
+)(PlaygroundWrapper)
 
 async function find(
   iterable: any[],

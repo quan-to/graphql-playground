@@ -23,6 +23,8 @@ import {
   setCurrentQueryStartTime,
   setCurrentQueryEndTime,
   setEndpointUnreachable,
+  clearResponses,
+  setResponse,
 } from './actions'
 import {
   getSelectedSession,
@@ -30,7 +32,7 @@ import {
   getParsedVariablesFromSession,
 } from './selectors'
 import { SchemaFetcher } from '../../components/Playground/SchemaFetcher'
-import { getSelectedWorkspaceId } from '../workspace/reducers'
+import { getSelectedWorkspaceId, getSettings } from '../workspace/reducers'
 import * as cuid from 'cuid'
 import { Session, ResponseRecord } from './reducers'
 import { addHistoryItem } from '../history/actions'
@@ -38,7 +40,7 @@ import { safely } from '../../utils'
 import { set } from 'immutable'
 
 // tslint:disable
-let subscriptionEndpoint = ''
+let subscriptionEndpoint
 
 export function setSubscriptionEndpoint(endpoint) {
   subscriptionEndpoint = endpoint
@@ -47,6 +49,7 @@ export function setSubscriptionEndpoint(endpoint) {
 export interface LinkCreatorProps {
   endpoint: string
   headers?: Headers
+  credentials?: string
 }
 
 export interface Headers {
@@ -55,10 +58,10 @@ export interface Headers {
 
 export const defaultLinkCreator = (
   session: LinkCreatorProps,
-  wsEndpoint?: string,
+  subscriptionEndpoint?: string,
 ): { link: ApolloLink; subscriptionClient?: SubscriptionClient } => {
   let connectionParams = {}
-  const { headers } = session
+  const { headers, credentials } = session
 
   if (headers) {
     connectionParams = { ...headers }
@@ -66,22 +69,19 @@ export const defaultLinkCreator = (
 
   const httpLink = new HttpLink({
     uri: session.endpoint,
-    fetch,
     headers,
+    credentials,
   })
 
-  if (!(wsEndpoint || subscriptionEndpoint)) {
+  if (!subscriptionEndpoint) {
     return { link: httpLink }
   }
 
-  const subscriptionClient = new SubscriptionClient(
-    wsEndpoint || subscriptionEndpoint,
-    {
-      timeout: 20000,
-      lazy: true,
-      connectionParams,
-    },
-  )
+  const subscriptionClient = new SubscriptionClient(subscriptionEndpoint, {
+    timeout: 20000,
+    lazy: true,
+    connectionParams,
+  })
 
   const webSocketLink = new WebSocketLink(subscriptionClient)
   return {
@@ -120,18 +120,23 @@ function* runQuerySaga(action) {
   const operation = makeOperation(request)
   const operationIsSubscription = isSubscription(operation)
   const workspace = yield select(getSelectedWorkspaceId)
+  const settings = yield select(getSettings)
   yield put(setSubscriptionActive(isSubscription(operation)))
   yield put(startQuery())
   let headers = parseHeaders(session.headers)
-  if (session.tracingSupported) {
+  if (session.tracingSupported && session.responseTracingOpen) {
     headers = set(headers, 'X-Apollo-Tracing', '1')
   }
-  const { link, subscriptionClient } = linkCreator({
+  const lol = {
     endpoint: session.endpoint,
     headers,
-  })
+    credentials: settings['request.credentials'],
+  }
+
+  const { link, subscriptionClient } = linkCreator(lol, subscriptionEndpoint)
   yield put(setCurrentQueryStartTime(new Date()))
 
+  let firstResponse = false
   const channel = eventChannel(emitter => {
     let closed = false
     if (subscriptionClient && operationIsSubscription) {
@@ -180,7 +185,12 @@ function* runQuerySaga(action) {
       if (value && value.extensions) {
         const extensions = value.extensions
         yield put(setResponseExtensions(extensions))
-        delete value.extensions
+        if (
+          value.extensions.tracing &&
+          settings['tracing.hideTracingResponse']
+        ) {
+          delete value.extensions.tracing
+        }
       }
       const response = new ResponseRecord({
         date: JSON.stringify(value ? value : formatError(error), null, 2),
@@ -191,7 +201,15 @@ function* runQuerySaga(action) {
       if (errorMessage === 'Failed to fetch') {
         yield put(setEndpointUnreachable(session.endpoint))
       }
-      yield put(addResponse(selectedWorkspaceId, session.id, response))
+      if (operationIsSubscription) {
+        if (firstResponse) {
+          yield put(clearResponses())
+          firstResponse = false
+        }
+        yield put(addResponse(selectedWorkspaceId, session.id, response))
+      } else {
+        yield put(setResponse(selectedWorkspaceId, session.id, response))
+      }
       yield put(addHistoryItem(session))
     }
   } finally {
@@ -219,6 +237,11 @@ export function formatError(error, fetchingSchema: boolean = false) {
 
 function extractMessage(error) {
   if (error instanceof Error) {
+    // Errors from apollo-link-http may include a "result" object, which is a JSON response from
+    // the server. We should surface that to the client
+    if (!!error['result'] && typeof error['result'] === 'object') {
+      return (error as any).result
+    }
     return error.message
   }
 

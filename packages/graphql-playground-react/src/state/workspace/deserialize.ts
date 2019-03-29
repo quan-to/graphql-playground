@@ -4,14 +4,14 @@ import { SharingState } from '../sharing/reducers'
 import { Map, OrderedMap, List, fromJS } from 'immutable'
 import { GeneralState } from '../general/reducers'
 import { mapValues } from 'lodash'
-import { RootState, Workspace } from './reducers'
+import { RootState, Workspace, normalizeSettingsString } from './reducers'
 import { AppHistory, AppHistoryItem } from '../appHistory/reducers'
 
 export function deserializePersistedState(state) {
   return new RootState({
     workspaces: deserializeWorkspaces(state.workspaces),
     selectedWorkspace: state.selectedWorkspace,
-    settingsString: state.settingsString,
+    settingsString: normalizeSettingsString(state.settingsString),
     appHistory: deserializeAppHistory(state.appHistory),
     general: deserializeGeneral(state.general),
   }) as any
@@ -92,7 +92,11 @@ function deserializeSession(session) {
 }
 
 function deserializeResponses(responses) {
-  return List(responses.map(response => deserializeResponse(response)))
+  return List(
+    responses
+      .filter(r => r.isSchemaError)
+      .map(response => deserializeResponse(response)),
+  )
 }
 
 function deserializeResponse(response) {
@@ -100,6 +104,7 @@ function deserializeResponse(response) {
     resultID: response.resultID,
     date: response.date,
     time: new Date(response.time),
+    isSchemaError: response.isSchemaError || false,
   })
 }
 

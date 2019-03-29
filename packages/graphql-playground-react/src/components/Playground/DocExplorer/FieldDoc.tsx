@@ -13,6 +13,8 @@ import ScalarTypeSchema from './DocsTypes/ScalarType'
 import EnumTypeSchema from './DocsTypes/EnumTypeSchema'
 import UnionTypeSchema from './DocsTypes/UnionTypeSchema'
 import { getDeeperType, serialize } from '../util/stack'
+import { CategoryTitle } from './DocsStyles'
+import { styled } from '../../../styled'
 
 export interface Props {
   schema: any
@@ -76,32 +78,7 @@ export default class FieldDoc extends React.Component<Props, State> {
 
     return (
       <div ref={this.setRef}>
-        <style jsx={true} global={true}>{`
-          .doc-header .doc-category-item {
-            @p: .fw6, .f14;
-          }
-          .doc-header .doc-category-item .field-name {
-            color: #f25c54;
-          }
-          .doc-description {
-            @p: .ph16, .black50;
-          }
-        `}</style>
-        <style jsx={true}>{`
-          .doc-header {
-            @p: .bgBlack02, .pb10, .pt20;
-          }
-          .doc-type-description {
-            @p: .pb16;
-          }
-          .doc-deprecation {
-            @p: .ph16, .black50;
-          }
-          .markdown-content {
-            @p: .pb20;
-          }
-        `}</style>
-        <div className="doc-header">
+        <DocsHeader>
           <TypeLink
             type={field}
             x={level}
@@ -109,21 +86,16 @@ export default class FieldDoc extends React.Component<Props, State> {
             clickable={false}
             lastActive={false}
           />
-        </div>
-        <MarkdownContent
+        </DocsHeader>
+        <DocsDescription
           className="doc-type-description"
           markdown={field.description || ''}
         />
 
-        <div className="doc-category-title">{`${typeInstance} details`}</div>
+        <CategoryTitle>{`${typeInstance} details`}</CategoryTitle>
         {type.description &&
           type.description.length > 0 && (
-            <div className="markdown-content">
-              <MarkdownContent
-                className="doc-description"
-                markdown={type.description || ''}
-              />
-            </div>
+            <DocsDescription markdown={type.description || ''} />
           )}
         {type instanceof GraphQLScalarType && <ScalarTypeSchema type={type} />}
         {type instanceof GraphQLEnumType && <EnumTypeSchema type={type} />}
@@ -136,49 +108,52 @@ export default class FieldDoc extends React.Component<Props, State> {
           />
         )}
 
-        {obj.fields.length > 0 && (
-          <DocTypeSchema
-            type={type}
-            fields={obj.fields}
-            interfaces={obj.interfaces}
-            level={level}
-            sessionId={this.props.sessionId}
-          />
-        )}
+        {obj.fields &&
+          obj.fields.length > 0 && (
+            <DocTypeSchema
+              type={type}
+              fields={obj.fields}
+              interfaces={obj.interfaces}
+              level={level}
+              sessionId={this.props.sessionId}
+            />
+          )}
 
-        {obj.args.length > 0 && (
-          <div>
-            <div className="doc-category-title">arguments</div>
-            {obj.args.map((arg, index) => (
-              <div key={arg.name}>
-                <div>
-                  <Argument
-                    arg={arg}
-                    x={level}
-                    y={index + argsOffset}
-                    sessionId={this.props.sessionId}
-                  />
+        {obj.args &&
+          obj.args.length > 0 && (
+            <div>
+              <CategoryTitle>arguments</CategoryTitle>
+              {obj.args.map((arg, index) => (
+                <div key={arg.name}>
+                  <div>
+                    <Argument
+                      arg={arg}
+                      x={level}
+                      y={index + argsOffset}
+                      sessionId={this.props.sessionId}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        {obj.implementations.length > 0 && (
-          <div>
-            <div className="doc-category-title">implementations</div>
-            {obj.implementations.map((data, index) => (
-              <TypeLink
-                key={data.name}
-                type={data}
-                x={level}
-                y={index + implementationsOffset}
-                collapsable={true}
-                lastActive={false}
-              />
-            ))}
-          </div>
-        )}
+        {obj.implementations &&
+          obj.implementations.length > 0 && (
+            <div>
+              <CategoryTitle>implementations</CategoryTitle>
+              {obj.implementations.map((data, index) => (
+                <TypeLink
+                  key={data.name}
+                  type={data}
+                  x={level}
+                  y={index + implementationsOffset}
+                  collapsable={true}
+                  lastActive={false}
+                />
+              ))}
+            </div>
+          )}
       </div>
     )
   }
@@ -189,7 +164,7 @@ const scrollToRight = (element: Element, to: number, duration: number) => {
     return
   }
   const difference = to - element.scrollLeft
-  const perTick = difference / duration * 10
+  const perTick = (difference / duration) * 10
   setTimeout(() => {
     element.scrollLeft = element.scrollLeft + perTick
     if (element.scrollLeft === to) {
@@ -198,3 +173,28 @@ const scrollToRight = (element: Element, to: number, duration: number) => {
     scrollToRight(element, to, duration - 10)
   }, 10)
 }
+
+const DocsHeader = styled.div`
+  background: ${p => p.theme.colours.black02};
+  padding-top: 20px;
+  padding-bottom: 10px;
+
+  .doc-category-item {
+    font-size: 14px;
+    font-weight: 600;
+    word-wrap: break-word;
+  }
+  .doc-category-item .field-name {
+    color: #f25c54;
+  }
+  div {
+    background: transparent;
+    pointer-events: none;
+  }
+`
+
+const DocsDescription = styled(MarkdownContent)`
+  font-size: 14px;
+  padding: 0 16px 20px 16px;
+  color: rgba(0, 0, 0, 0.5);
+`

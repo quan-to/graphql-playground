@@ -1,5 +1,5 @@
-import { print, parse } from 'graphql'
-
+import * as prettier from 'prettier/standalone'
+import * as graphql from 'prettier/parser-graphql'
 // tslint:disable
 
 export function safely(cb: any) {
@@ -12,6 +12,24 @@ export function safely(cb: any) {
   }
 }
 
-export function prettify(query) {
-  return print(parse(query))
+interface PrettierOptions {
+  printWidth: number
+  tabWidth: number
+  useTabs: boolean
+}
+
+export function prettify(query: string, options: PrettierOptions) {
+  return prettier.format(query, {
+    ...options,
+    parser: 'graphql',
+    plugins: [graphql],
+  })
+}
+
+export function isIframe() {
+  try {
+    return window.self !== window.top
+  } catch (e) {
+    return true
+  }
 }

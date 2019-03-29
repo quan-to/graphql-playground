@@ -1,37 +1,37 @@
 import * as React from 'react'
-import * as cx from 'classnames'
 import { columnWidth } from '../../../constants'
+import { styled } from '../../../styled'
 
 export interface Props {
   children: any
-  first?: boolean
   overflow?: boolean
   width?: number
 }
 
 const ColumnDoc = ({
   children,
-  first,
   overflow = true,
   width = columnWidth,
 }: Props) => {
   return (
-    <div
-      className={cx('graph-docs-column', { first, overflow })}
-      style={{ width }}
-    >
-      <style jsx={true}>{`
-        .graph-docs-column {
-          @p: .flexFixed, .pb20, .br, .bBlack10, .flex, .flexColumn;
-        }
-        .overflow {
-          overflow-x: hidden;
-          overflow-y: scroll;
-        }
-      `}</style>
+    <Column style={{ width }} verticalScroll={overflow}>
       {children}
-    </div>
+    </Column>
   )
 }
 
 export default ColumnDoc
+
+interface ColumnProps {
+  verticalScroll: boolean
+}
+
+const Column = styled<ColumnProps, 'div'>('div')`
+  display: flex;
+  flex: 0 0 auto;
+  flex-flow: column;
+  padding-bottom: 20px;
+  border-right: 1px solid ${p => p.theme.colours.black10};
+  overflow-x: ${p => (p.verticalScroll ? 'hidden' : 'auto')}
+  overflow-y: ${p => (p.verticalScroll ? 'scroll' : 'auto')}
+`

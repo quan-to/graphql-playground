@@ -1,10 +1,8 @@
 import * as React from 'react'
 import { GraphQLConfig, GraphQLConfigEnpointsMapData } from '../graphqlConfig'
 import ProjectsSideNavItem from './ProjectsSideNavItem'
-import { Icon, $v } from 'graphcool-styles'
+import { SettingsIcon, AddFullIcon } from './Icons'
 import { styled } from '../styled/index'
-import * as theme from 'styled-theming'
-import { darken } from 'polished'
 import { getEndpointFromEndpointConfig } from './util'
 import { createStructuredSelector } from 'reselect'
 import { connect } from 'react-redux'
@@ -38,49 +36,38 @@ class ProjectsSideNav extends React.Component<Props & ReduxProps, {}> {
     const projects = config.projects
     return (
       <SideNav>
-        <DraggableHeader isElectron={isElectron} />
-        <List>
-          <div>
-            <TitleRow>
-              <Title>{folderName}</Title>
-              <Icon
-                src={require('graphcool-styles/icons/fill/settings.svg')}
-                width={18}
-                height={18}
-                onClick={this.props.openConfigTab}
-                className={'settings-icon'}
-              />
-            </TitleRow>
-            {endpoints && this.renderEndpoints(endpoints)}
-            {projects &&
-              Object.keys(projects).map(projectName => {
-                const project = projects[projectName]
-                const projectEndpoints =
-                  project.extensions && project.extensions.endpoints
-                if (!projectEndpoints) {
-                  return null
-                }
+        <List isElectron={isElectron}>
+          <TitleRow>
+            <Title>{folderName}</Title>
+            <SettingsIcon
+              width={18}
+              height={18}
+              onClick={this.props.openConfigTab}
+              title="Project settings"
+            />
+          </TitleRow>
+          {endpoints && this.renderEndpoints(endpoints)}
+          {projects &&
+            Object.keys(projects).map(projectName => {
+              const project = projects[projectName]
+              const projectEndpoints =
+                project.extensions && project.extensions.endpoints
+              if (!projectEndpoints) {
+                return null
+              }
 
-                return (
-                  <Project key={projectName}>
-                    <ProjectName>{projectName}</ProjectName>
-                    {this.renderEndpoints(projectEndpoints, projectName)}
-                  </Project>
-                )
-              })}
-          </div>
+              return (
+                <Project key={projectName}>
+                  <ProjectName>{projectName}</ProjectName>
+                  {this.renderEndpoints(projectEndpoints, projectName)}
+                </Project>
+              )
+            })}
         </List>
-        {this.props.showNewWorkspace && (
+        {isElectron && (
           <Footer>
             <WorkspaceButton onClick={onNewWorkspace}>
-              <Icon
-                src={require('graphcool-styles/icons/stroke/addFull.svg')}
-                stroke={true}
-                color={$v.darkBlue}
-                width={14}
-                height={14}
-                strokeWidth={6}
-              />
+              <AddFullIcon width={14} height={14} strokeWidth={6} />
               NEW WORKSPACE
             </WorkspaceButton>
           </Footer>
@@ -123,140 +110,80 @@ const mapStateToProps = createStructuredSelector({
   counts: getSessionCounts,
 })
 
-export default connect(mapStateToProps, { openConfigTab })(ProjectsSideNav)
-
-const textColor = theme('mode', {
-  light: p => p.theme.colours.darkBlue80,
-  dark: p => p.theme.colours.white,
-})
-
-const backgroundColor = theme('mode', {
-  light: p => p.theme.colours.lightGrey,
-  dark: p => p.theme.colours.darkBlue,
-})
-
-const darkerBackgroundColor = theme('mode', {
-  // light: p => '#dbdee0',
-  light: p => p.theme.colours.lightGrey,
-  dark: p => p.theme.colours.darkerBlue,
-})
-
-const borderColor = theme('mode', {
-  light: p => '#dbdee0',
-  // light: p => p.theme.colours.lightGrey,
-  dark: p => p.theme.colours.darkestBlue,
-})
-
-const footerBackgroundColor = theme('mode', {
-  light: p => p.theme.colours.lighterGrey,
-  dark: p => p.theme.colours.darkBlue,
-})
-
-const buttonFontColor = theme('mode', {
-  light: p => p.theme.colours.lightGrey,
-  dark: p => p.theme.colours.darkBlue,
-})
-
-const buttonBackgroundColor = theme('mode', {
-  light: p => '#B9BFC4',
-  dark: p => '#B9BFC4',
-})
-
-const buttonHoverBackgroundColor = theme('mode', {
-  light: p => darken(0.1, '#B9BFC4'),
-  dark: p => darken(0.1, '#B9BFC4'),
-})
-
-const iconColor = theme('mode', {
-  light: p => p.theme.colours.darkBlue20,
-  dark: p => p.theme.colours.white20,
-})
-
-const iconColorActive = theme('mode', {
-  light: p => p.theme.colours.darkBlue60,
-  dark: p => p.theme.colours.white60,
-})
-
-const Project = styled.div`
-  margin-bottom: 12px;
-`
+export default connect(
+  mapStateToProps,
+  { openConfigTab },
+)(ProjectsSideNav)
 
 const SideNav = styled.div`
-  position: relative;
-  background: ${backgroundColor};
-  flex: 0 222px;
-  color: ${textColor};
-  border-right: 6px solid ${borderColor};
-  .left-content.light {
-    @p: .bgWhite70, .black60;
-  }
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: ${p => p.theme.editorColours.sidebar};
+  flex-basis: 222px;
+  color: ${p => p.theme.editorColours.text};
+  border-right: 6px solid ${p => p.theme.editorColours.background};
 `
 
-const DraggableHeader = styled.div`
-  padding-top: ${(p: any) => (p.isElectron ? 48 : 20)}px;
-  background: ${darkerBackgroundColor};
-  -webkit-app-region: drag;
-  max-width: 222px;
-  overflow: hidden;
-` as any
-
-// TODO fix typing
 const List = styled.div`
-  padding-bottom: 32px;
-  max-width: 222px;
-  overflow: hidden;
-  background: ${darkerBackgroundColor};
+  -webkit-app-region: drag;
+  padding-top: ${(p: any) => (p.isElectron ? 48 : 20)}px;
+  display: flex;
+  flex-direction: column;
+  background: ${p => p.theme.editorColours.sidebarTop};
 `
 
 const Title = styled.div`
   font-size: 16px;
   font-weight: 600;
-  color: ${textColor};
+  color: ${p => p.theme.editorColours.text};
+  word-break: break-word;
 `
 
 const TitleRow = styled.div`
   display: flex;
   align-items: center;
-  padding-left: 20px;
-  padding-right: 10px;
-  padding-bottom: 20px;
-  justify-content: space-between;
-
-  .settings-icon {
+  justify-content: space-evenly;
+  margin: 0 15px 20px 15px;
+  svg {
+    min-width: 18px;
+    min-height: 18px;
     cursor: pointer;
-  }
-
-  .settings-icon svg {
-    fill: ${iconColor};
+    fill: ${p => p.theme.editorColours.icon};
     transition: 0.1s linear fill;
   }
-
   &:hover {
-    .settings-icon svg {
-      fill: ${iconColorActive};
+    svg {
+      fill: ${p => p.theme.editorColours.iconHover};
     }
+  }
+`
+
+const Project = styled.div`
+  display: flex;
+  flex-direction: column;
+  & + & {
+    margin-top: 12px;
+  }
+  &:last-child {
+    margin-bottom: 32px;
   }
 `
 
 const ProjectName = styled.div`
   font-size: 14px;
-  color: ${textColor};
+  color: ${p => p.theme.editorColours.text};
   font-weight: 600;
   letter-spacing: 0.53px;
-  margin-left: 30px;
-  margin-bottom: 6px;
+  margin: 0 10px 6px 30px;
+  word-break: break-word;
 `
 
 const Footer = styled.div`
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  box-sizing: border-box;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px;
-  background: ${footerBackgroundColor};
+  justify-content: center;
+  margin: 32px 0;
+  background: ${p => p.theme.editorColours.sidebarBottom};
 `
 
 const WorkspaceButton = styled.button`
@@ -268,16 +195,18 @@ const WorkspaceButton = styled.button`
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.53px;
-  color: ${buttonFontColor};
-  background-color: ${buttonBackgroundColor};
+  color: ${p => p.theme.editorColours.buttonWorkspaceText};
+  background-color: ${p => p.theme.editorColours.buttonWorkspace};
   transition: 0.1s linear all;
   &:hover {
-    background-color: ${buttonHoverBackgroundColor};
+    background-color: ${p => p.theme.editorColours.buttonWorkspaceHover};
   }
   i {
     margin-right: 6px;
   }
   svg {
-    stroke: ${buttonFontColor};
+    min-width: 18px;
+    min-height: 18px;
+    stroke: ${p => p.theme.editorColours.buttonWorkspaceText};
   }
 `

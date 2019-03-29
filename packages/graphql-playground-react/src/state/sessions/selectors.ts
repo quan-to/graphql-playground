@@ -67,6 +67,22 @@ export const getCurrentQueryStartTime = makeSessionSelector(
 )
 export const getCurrentQueryEndTime = makeSessionSelector('currentQueryEndTime')
 export const getIsReloadingSchema = makeSessionSelector('isReloadingSchema')
+export const getIsPollingSchema = createSelector(
+  [getEndpoint, getSettings],
+  (endpoint, settings) => {
+    const json = JSON.parse(settings)
+    try {
+      const isPolling =
+        json['schema.polling.enable'] &&
+        endpoint.match(`/${json['schema.polling.endpointFilter']}`) &&
+        true
+      return isPolling
+    } catch (e) {
+      return false
+    }
+  },
+)
+
 export const getResponseExtensions = makeSessionSelector('responseExtensions')
 export const getQueryVariablesActive = makeSessionSelector(
   'queryVariablesActive',
@@ -84,6 +100,32 @@ export const getResponseTracingHeight = makeSessionSelector(
 export const getDocExplorerWidth = makeSessionSelector('docExplorerWidth')
 export const getNextQueryStartTime = makeSessionSelector('nextQueryStartTime')
 export const getTracingSupported = makeSessionSelector('tracingSupported')
+
+function getSettings(state) {
+  return state.getIn(['settingsString'])
+}
+
+export const getTabWidth = createSelector([getSettings], settings => {
+  try {
+    const json = JSON.parse(settings)
+    return json['prettier.tabWidth'] || 2
+  } catch (e) {
+    //
+  }
+
+  return 2
+})
+
+export const getUseTabs = createSelector([getSettings], settings => {
+  try {
+    const json = JSON.parse(settings)
+    return json['prettier.useTabs'] || false
+  } catch (e) {
+    //
+  }
+
+  return false
+})
 
 export const getHeadersCount = createSelector([getHeaders], headers => {
   try {

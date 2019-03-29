@@ -17,7 +17,12 @@ import {
   getQuery,
   getSelectedSessionIdFromRoot,
   getScrollTop,
+  getTabWidth,
+  getUseTabs,
 } from '../../state/sessions/selectors'
+import EditorWrapper from './EditorWrapper'
+import { styled } from '../../styled'
+import { isIframe } from '../../utils'
 /**
  * QueryEditor
  *
@@ -45,6 +50,8 @@ export interface ReduxProps {
   value: string
   sessionId?: string
   scrollTop?: number
+  tabWidth?: number
+  useTabs?: boolean
 }
 
 const md = new MD()
@@ -96,10 +103,11 @@ export class QueryEditor extends React.PureComponent<Props & ReduxProps, {}> {
     gutters.push('CodeMirror-foldgutter')
 
     this.editor = CodeMirror(this.node, {
-      autofocus: true,
+      autofocus: !isIframe() ? true : false,
       value: this.props.value || '',
       lineNumbers: true,
-      tabSize: 2,
+      tabSize: this.props.tabWidth || 2,
+      indentWithTabs: this.props.useTabs || false,
       mode: 'graphql',
       theme: 'graphiql',
       keyMap: 'sublime',
@@ -202,8 +210,10 @@ export class QueryEditor extends React.PureComponent<Props & ReduxProps, {}> {
   componentWillReceiveProps(nextProps) {
     if (this.props.sessionId !== nextProps.sessionId) {
       this.closeCompletion()
-      this.editor.focus()
       this.updateSessionScrollTop()
+      if (!isIframe()) {
+        this.editor.focus()
+      }
     }
   }
 
@@ -229,7 +239,11 @@ export class QueryEditor extends React.PureComponent<Props & ReduxProps, {}> {
   }
 
   render() {
-    return <div className="query-editor" ref={this.setRef} />
+    return (
+      <EditorWrapper>
+        <Editor ref={this.setRef} />
+      </EditorWrapper>
+    )
   }
 
   setRef = ref => {
@@ -296,8 +310,21 @@ const mapStateToProps = createStructuredSelector({
   value: getQuery,
   sessionId: getSelectedSessionIdFromRoot,
   scrollTop: getScrollTop,
+  tabWidth: getTabWidth,
+  useTabs: getUseTabs,
 })
 
-export default connect(mapStateToProps, { onChange: editQuery, setScrollTop })(
-  QueryEditor,
-)
+export default connect(
+  mapStateToProps,
+  { onChange: editQuery, setScrollTop },
+)(QueryEditor)
+
+const Editor = styled.div`
+  flex: 1 1 0%;
+  position: relative;
+
+  .CodeMirror {
+    width: 100%;
+    background: ${p => p.theme.editorColours.editorBackground};
+  }
+`
