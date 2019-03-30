@@ -143,6 +143,7 @@ function* runQuerySaga(action) {
       subscriptionClient.onDisconnected(() => {
         closed = true
         emitter({
+          // @ts-ignore
           error: new Error(
             `Could not connect to websocket endpoint ${subscriptionEndpoint}. Please check if the endpoint url is correct.`,
           ),

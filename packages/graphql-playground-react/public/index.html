@@ -4,7 +4,7 @@
 <head>
   <meta charset=utf-8 />
   <meta name="viewport" content="user-scalable=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, minimal-ui">
-  <title>GraphQL Playground</title>
+  <title>QRS Web</title>
 
 </head>
 
@@ -512,28 +512,26 @@
       </g>
     </svg>
     <div class="text">Loading
-      <span class="dGfHfc">GraphQL Playground</span>
+      <span class="dGfHfc">QRS Web</span>
     </div>
   </div>
 
-  <div id="root" />
+  <div id="root"></div>
   <script type="text/javascript">
-    window.addEventListener('load', function (event) {
-
+    window.addEventListener('load', function () {
       const loadingWrapper = document.getElementById('loading-wrapper');
       loadingWrapper.classList.add('fadeOut');
-
 
       const root = document.getElementById('root');
       root.classList.add('playgroundIn');
 
-      GraphQLPlayground.init(root, {
-        "env": "react",
-        "canSaveConfig": false,
-        "headers": {
-          "test": "test",
-        }
-      })
+      QRS.RegisterEvent(() => {
+        GraphQLPlayground.init(root, {
+          "env": "electron",
+          "canSaveConfig": true,
+          "endpoint": "https://api.graph.cool/simple/v1/swapi"
+        })
+      });
     })
   </script>
 </body>

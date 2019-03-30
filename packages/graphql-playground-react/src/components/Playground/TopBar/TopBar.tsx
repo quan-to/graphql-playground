@@ -23,6 +23,7 @@ import { share } from '../../../state/sharing/actions'
 import { openHistory } from '../../../state/general/actions'
 import { getSettings } from '../../../state/workspace/reducers'
 import { ISettings } from '../../../types'
+import GPGSelectionButton from '../GPGSelectionButton'
 
 export interface Props {
   endpoint: string
@@ -31,6 +32,7 @@ export interface Props {
   isPollingSchema: boolean
   endpointUnreachable: boolean
 
+  onGpgKeyChanged: (fingerPrint: string) => void
   editEndpoint: (value: string) => void
   prettifyQuery: () => void
   openHistory: () => void
@@ -54,6 +56,9 @@ class TopBar extends React.Component<Props, {}> {
       <TopBarWrapper>
         <Button onClick={this.props.prettifyQuery}>Prettify</Button>
         <Button onClick={this.openHistory}>History</Button>
+        <GPGWrapper>
+          <GPGSelectionButton onGpgKeyChanged={this.props.onGpgKeyChanged} />
+        </GPGWrapper>
         <UrlBarWrapper>
           <UrlBar
             value={this.props.endpoint}
@@ -170,7 +175,11 @@ export default connect(
   },
 )(TopBar)
 
-export const Button = styled.button`
+const GPGWrapper = styled.div`
+  margin-left: 6px;
+`
+
+export const Button: any = styled.button`
   text-transform: uppercase;
   font-weight: 600;
   color: ${p => p.theme.editorColours.buttonText};

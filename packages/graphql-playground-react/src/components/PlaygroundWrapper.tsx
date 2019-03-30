@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet'
 import { GraphQLConfig } from '../graphqlConfig'
 import * as yaml from 'js-yaml'
 import ProjectsSideNav from './ProjectsSideNav'
+import Modal from 'react-responsive-modal'
 import {
   styled,
   ThemeProvider,
@@ -26,6 +27,12 @@ import { Session, Tab } from '../state/sessions/reducers'
 import { ApolloLink } from 'apollo-link'
 import { injectTabs } from '../state/workspace/actions'
 import { buildSchema, buildClientSchema, GraphQLSchema } from 'graphql'
+import {
+  needKeyUnlock,
+  RequestKeyUnlock,
+  SetOnNeedKeyUnlockCallback,
+  UnlockKey,
+} from '../qrs/qrs'
 
 function getParameterByName(name: string, uri?: string): string | null {
   const url = uri || window.location.href
@@ -68,6 +75,7 @@ export interface PlaygroundWrapperProps {
   codeTheme?: EditorColours
   workspaceName?: string
   headers?: any
+  getNeedKeyUnlock?: any
 }
 
 export interface ReduxProps {
@@ -87,6 +95,9 @@ export interface State {
   activeEnv?: string
   headers?: any
   schema?: GraphQLSchema
+  modalIsOpen: boolean
+  fingerPrint: string | null
+  password: string | undefined
 }
 
 class PlaygroundWrapper extends React.Component<
@@ -144,6 +155,9 @@ class PlaygroundWrapper extends React.Component<
       activeEnv,
       activeProjectName: projectName,
       headers,
+      modalIsOpen: false,
+      fingerPrint: null,
+      password: undefined,
     }
   }
 
@@ -333,7 +347,19 @@ class PlaygroundWrapper extends React.Component<
     }
   }
 
+  openModal = (fingerPrint: string) => {
+    this.setState({
+      modalIsOpen: true,
+      fingerPrint,
+    })
+  }
+
+  closeModal = () => {
+    this.setState({ modalIsOpen: false })
+  }
+
   render() {
+    const fingerPrint = needKeyUnlock
     const title = this.props.setTitle ? (
       <Helmet>
         <title>{this.getTitle()}</title>
@@ -343,7 +369,11 @@ class PlaygroundWrapper extends React.Component<
     const defaultHeaders = this.props.headers || {}
     const stateHeaders = this.state.headers || {}
     const combinedHeaders = { ...defaultHeaders, ...stateHeaders }
-
+    SetOnNeedKeyUnlockCallback(() => {
+      this.setState({
+        modalIsOpen: true,
+      })
+    })
     const { theme } = this.props
     return (
       <div>
@@ -404,10 +434,53 @@ class PlaygroundWrapper extends React.Component<
               createApolloLink={this.props.createApolloLink}
               schema={this.state.schema}
             />
+            <div>
+              <Modal
+                open={fingerPrint !== false}
+                onClose={this.closeModal}
+                center={true}
+              >
+                <div>
+                  The key {fingerPrint} is locked. Please type the password to
+                  unlock it.<br />
+                  <input
+                    type="password"
+                    value={this.state.password}
+                    onChange={this.onPasswordChange}
+                  />
+                  <br />
+                  <button onClick={this.onPasswordFill}>OK</button>
+                </div>
+              </Modal>
+            </div>
           </App>
         </ThemeProvider>
       </div>
     )
+  }
+
+  onPasswordChange = event => {
+    this.setState({ password: event.target.value })
+  }
+
+  onPasswordFill = () => {
+    UnlockKey(
+      `${needKeyUnlock}`,
+      this.state.password || '',
+      (status, error) => {
+        if (error) {
+          alert(error)
+        } else {
+          alert(status)
+        }
+      },
+    )
+    RequestKeyUnlock(false)
+    this.setState({
+      fingerPrint: null,
+      modalIsOpen: false,
+      password: undefined,
+    })
   }
 
   handleUpdateSessionCount = () => {
