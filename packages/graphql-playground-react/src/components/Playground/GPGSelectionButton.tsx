@@ -16,7 +16,7 @@ import {
 } from '../../state/sessions/selectors'
 import { toJS } from './util/toJS'
 import GPGSelectionButtonFingerprint from './GPGSelectionButtonFingerprint'
-import { GetPrivateKeys } from '../../qrs/qrs'
+import { GetPrivateKeys, SetOnKeyRefreshCallback } from '../../qrs/qrs'
 import { FingerPrintHeaderName, KeyInfo } from '../../qrs/models'
 
 export interface ReduxProps {
@@ -93,6 +93,24 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
 
   componentWillMount() {
     GetPrivateKeys((keys, error) => this.onKeysReceived(keys, error))
+    const { selectedFingerPrint } = this.state
+    const fingerPrint = selectedFingerPrint || 'none'
+
+    let headers = this.props.getHeaders || '{}'
+    try {
+      if (headers === '') {
+        headers = '{}'
+      }
+      const headObj = JSON.parse(headers)
+      if (fingerPrint === 'none') {
+        delete headObj[FingerPrintHeaderName]
+      } else {
+        headObj[FingerPrintHeaderName] = fingerPrint
+      }
+      this.props.editHeaders(JSON.stringify(headObj, null, 2))
+    } catch (e) {
+      return
+    }
     // this.onKeysReceived([
     //   {
     //     FingerPrint: "0016A9CA870AFA59",
@@ -143,6 +161,11 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
   }
 
   render() {
+    SetOnKeyRefreshCallback(() => {
+      // tslint:disable-next-line:no-console
+      console.log(`Refreshing Keys`)
+      GetPrivateKeys((keys, error) => this.onKeysReceived(keys, error))
+    })
     const { availableKeys, selectedFingerPrint } = this.state
     const optionsOpen = this.state.optionsOpen
     const hasOptions = availableKeys && availableKeys.length > 1

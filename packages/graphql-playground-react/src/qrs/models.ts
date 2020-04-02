@@ -12,6 +12,8 @@ export enum MessageType {
   AddPrivateKey = 'addPrivateKey',
   UnlockKey = 'unlockKey',
   ListPrivateKeys = 'listKeys',
+  LoadPrivateKey = 'loadPrivateKey',
+  LoadPrivateKeyResult = 'loadPrivateKeyResult',
 }
 
 export interface KeyInfo {

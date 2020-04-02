@@ -12,9 +12,14 @@ export let needKeyUnlock: string | boolean
 needKeyUnlock = false
 
 let onNeedKeyUnlock: (() => void) | null
+let onKeyRefreshCallback: (() => void) | null
 
 function SetOnNeedKeyUnlockCallback(cb: () => void) {
   onNeedKeyUnlock = cb
+}
+
+function SetOnKeyRefreshCallback(cb: () => void) {
+  onKeyRefreshCallback = cb
 }
 
 function buildQRSMessage(name: MessageType, payload: any): QRSMessage {
@@ -120,11 +125,36 @@ function RegisterEvent(cb) {
     // tslint:disable-next-line:no-console
     console.log('Astilectron Web is ready')
     astilectron.onMessage(message => {
-      // Process message
-      if (message === 'hello') {
-        return 'world'
+      if (message.name) {
+        switch (message.name) {
+          case MessageType.LoadPrivateKey:
+            LoadPrivateKey()
+            break
+          case MessageType.LoadPrivateKeyResult:
+            alert('Keys loaded successfully')
+            if (onKeyRefreshCallback) {
+              onKeyRefreshCallback()
+            }
+            break
+          case MessageType.Error:
+            if (Array.isArray(message.payload)) {
+              let lines = 'There was errors processing your request: \n'
+              for (let i = 0; i < message.payload.length; i++) {
+                const err = message.payload[i]
+                if (err && err.length > 0) {
+                  lines += `(${i}) ${JSON.stringify(err, null, 2)}`
+                }
+              }
+              alert(lines)
+            } else {
+              alert(`There was an error: ${message.payload}`)
+            }
+            break
+          default:
+            // tslint:disable-next-line:no-console
+            console.log(`Unknown message name: ${message.name}`)
+        }
       }
-
       return null
     })
 
@@ -132,6 +162,16 @@ function RegisterEvent(cb) {
       cb()
     }
   })
+}
+
+function LoadPrivateKey() {
+  astilectron.showOpenDialog(
+    {
+      properties: ['openFile', 'multiSelections'],
+      title: 'Select GPG Private Keys',
+    },
+    paths => SendQRSMessage(MessageType.LoadPrivateKey, paths, () => {}),
+  )
 }
 
 function RequestKeyUnlock(fingerPrint: string | boolean) {
@@ -151,4 +191,5 @@ export {
   UnlockKeyPromise,
   RequestKeyUnlock,
   SetOnNeedKeyUnlockCallback,
+  SetOnKeyRefreshCallback,
 }

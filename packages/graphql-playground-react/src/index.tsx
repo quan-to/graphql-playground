@@ -23,26 +23,6 @@ if (process.env.NODE_ENV !== 'production') {
   // whyDidYouUpdate(React)
 }
 
-/* tslint:disable-next-line */
-;(window as any)['GraphQLPlayground'] = {
-  init(element: HTMLElement, options) {
-    ReactDOM.render(
-      <MiddlewareApp
-        setTitle={true}
-        showNewWorkspace={false}
-        {...options}
-        // config={config}
-        // configString={configString}
-        // codeTheme={lightEditorColours}
-        // tabs={tabs}
-        createApolloLink={customLinkCreator}
-        // schema={exampleSchema}
-      />,
-      element,
-    )
-  },
-}
-
 const customSignFetch = async (
   input?: Request | string,
   init?: RequestInit,
@@ -94,6 +74,8 @@ const customLinkCreator = (
 
   return { link }
 }
+
+/* tslint:disable-next-line */
 ;(window as any)['QRS'] = {
   GetPrivateKeys,
   RegisterEvent,
@@ -101,4 +83,24 @@ const customLinkCreator = (
   UnlockKey,
   Sign,
   RequestKeyUnlock,
+}
+
+/* tslint:disable-next-line */
+;(window as any)['GraphQLPlayground'] = {
+  init(element: HTMLElement, options) {
+    ReactDOM.render(
+      <MiddlewareApp
+        setTitle={true}
+        showNewWorkspace={false}
+        {...options}
+        // config={config}
+        // configString={configString}
+        // codeTheme={lightEditorColours}
+        // tabs={tabs}
+        createApolloLink={customLinkCreator}
+        // schema={exampleSchema}
+      />,
+      element,
+    )
+  },
 }

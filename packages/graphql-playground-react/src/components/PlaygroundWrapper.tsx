@@ -444,6 +444,7 @@ class PlaygroundWrapper extends React.Component<
                   The key {fingerPrint} is locked. Please type the password to
                   unlock it.<br />
                   <input
+                    placeholder="Key Password"
                     type="password"
                     value={this.state.password}
                     onChange={this.onPasswordChange}
