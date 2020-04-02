@@ -36,7 +36,7 @@ const customSignFetch = async (
         if (signBy && signBy !== 'none') {
           const dBody = JSON.parse(`${body || '{}'}`)
           dBody._timestamp = Date.now()
-          dBody._timeUniqueId = 'huebr'
+          dBody._timeUniqueId = 'agent-ui-client'
           const newBody = JSON.stringify(dBody)
           headers['signature'] = `${await SignPromise(signBy, newBody)}`
           init.body = newBody

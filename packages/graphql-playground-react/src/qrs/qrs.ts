@@ -14,6 +14,8 @@ needKeyUnlock = false
 let onNeedKeyUnlock: (() => void) | null
 let onKeyRefreshCallback: (() => void) | null
 
+let electron: any = null
+
 function SetOnNeedKeyUnlockCallback(cb: () => void) {
   onNeedKeyUnlock = cb
 }
@@ -164,14 +166,23 @@ function RegisterEvent(cb) {
   })
 }
 
-function LoadPrivateKey() {
-  astilectron.showOpenDialog(
-    {
-      properties: ['openFile', 'multiSelections'],
-      title: 'Select GPG Private Keys',
-    },
-    paths => SendQRSMessage(MessageType.LoadPrivateKey, paths, () => {}),
-  )
+async function LoadPrivateKey() {
+  if (!electron) {
+    // tslint:disable-next-line:no-console
+    console.log('Loading electron')
+    electron = window.require('electron').remote
+  }
+
+  const result = await electron.dialog.showOpenDialog({
+    properties: ['openFile', 'multiSelections'],
+    title: 'Select GPG Private Keys',
+  })
+
+  if (result.cancelled) {
+    return
+  }
+
+  SendQRSMessage(MessageType.LoadPrivateKey, result.filePaths, () => {})
 }
 
 function RequestKeyUnlock(fingerPrint: string | boolean) {

@@ -1,6 +1,7 @@
 interface Window {
   GraphQLPlayground: any
   version: string
+  require: any
 }
 
 declare module '*.json' {
