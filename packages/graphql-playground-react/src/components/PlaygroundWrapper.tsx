@@ -27,12 +27,7 @@ import { Session, Tab } from '../state/sessions/reducers'
 import { ApolloLink } from 'apollo-link'
 import { injectTabs } from '../state/workspace/actions'
 import { buildSchema, buildClientSchema, GraphQLSchema } from 'graphql'
-import {
-  needKeyUnlock,
-  RequestKeyUnlock,
-  SetOnNeedKeyUnlockCallback,
-  UnlockKey,
-} from '../qrs/qrs'
+import { SetOnKeyRequestCallback, UnlockKey } from '../qrs/qrs'
 
 function getParameterByName(name: string, uri?: string): string | null {
   const url = uri || window.location.href
@@ -105,6 +100,7 @@ class PlaygroundWrapper extends React.Component<
   State
 > {
   playground: IPlayground
+
   constructor(props: PlaygroundWrapperProps & ReduxProps) {
     super(props)
     ;(global as any).m = this
@@ -359,7 +355,10 @@ class PlaygroundWrapper extends React.Component<
   }
 
   render() {
-    const fingerPrint = needKeyUnlock
+    SetOnKeyRequestCallback((fingerprint: string) =>
+      this.openModal(fingerprint),
+    )
+    // const currentKeyLocked = this.state.fingerPrint !== null ? !isKeyUnlocked(this.state.fingerPrint) : false;
     const title = this.props.setTitle ? (
       <Helmet>
         <title>{this.getTitle()}</title>
@@ -369,11 +368,6 @@ class PlaygroundWrapper extends React.Component<
     const defaultHeaders = this.props.headers || {}
     const stateHeaders = this.state.headers || {}
     const combinedHeaders = { ...defaultHeaders, ...stateHeaders }
-    SetOnNeedKeyUnlockCallback(() => {
-      this.setState({
-        modalIsOpen: true,
-      })
-    })
     const { theme } = this.props
     return (
       <div>
@@ -436,22 +430,34 @@ class PlaygroundWrapper extends React.Component<
             />
             <div>
               <Modal
-                open={fingerPrint !== false}
+                open={this.state.modalIsOpen}
                 onClose={this.closeModal}
                 center={true}
               >
+                <br />
                 <div>
-                  The key {fingerPrint} is locked. Please type the password to
-                  unlock it.<br />
-                  <input
-                    placeholder="Key Password"
-                    type="password"
-                    value={this.state.password}
-                    onChange={this.onPasswordChange}
-                  />
+                  The key {this.state.fingerPrint} is locked. <br />
+                  Please type the password to unlock it.<br />
                   <br />
-                  <button onClick={this.onPasswordFill}>OK</button>
+                  <div
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <input
+                      placeholder="Key Password"
+                      type="password"
+                      value={this.state.password}
+                      onChange={this.onPasswordChange}
+                    />
+                    <br />
+                    <button onClick={this.onPasswordFill}>Unlock Key</button>
+                  </div>
                 </div>
+                <br />
               </Modal>
             </div>
           </App>
@@ -466,22 +472,22 @@ class PlaygroundWrapper extends React.Component<
 
   onPasswordFill = () => {
     UnlockKey(
-      `${needKeyUnlock}`,
+      `${this.state.fingerPrint}`,
       this.state.password || '',
       (status, error) => {
+        this.setState({
+          modalIsOpen: false,
+          password: undefined,
+        })
+
         if (error) {
-          alert(error)
-        } else {
-          alert(status)
+          alert(`Error unlocking key: ${error}`)
+          return
         }
+
+        alert(`Key ${this.state.fingerPrint} unlocked!`)
       },
     )
-    RequestKeyUnlock(false)
-    this.setState({
-      fingerPrint: null,
-      modalIsOpen: false,
-      password: undefined,
-    })
   }
 
   handleUpdateSessionCount = () => {
@@ -628,11 +634,11 @@ async function find(
 }
 
 const appearIn = keyframes`
-  from { 
+  from {
     opacity: 0;
     transform: translateY(10px);
   }
-  to { 
+  to {
     opacity: 1;
     transform: translateY(0);
   }

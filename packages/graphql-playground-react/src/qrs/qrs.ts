@@ -1,104 +1,198 @@
-import {
-  MessageType,
-  QRSMessage,
-  MessageCallback,
-  PrivateKeysCallback,
-  UnlockKeyCallback,
-  SignCallback,
-} from './models'
+import { PrivateKeysCallback, UnlockKeyCallback, SignCallback } from './models'
 
-export let needKeyUnlock: string | boolean
+import * as openpgp from 'openpgp'
 
-needKeyUnlock = false
+const loadedKeys: any[] = []
 
-let onNeedKeyUnlock: (() => void) | null
-let onKeyRefreshCallback: (() => void) | null
+const getLoadedKey = (fingerprint: string): any => {
+  const keys = loadedKeys
+    .map(k => (getKeyFingerprint(k) === fingerprint ? k : null))
+    .filter(k => k !== null)
 
-let electron: any = null
-
-function SetOnNeedKeyUnlockCallback(cb: () => void) {
-  onNeedKeyUnlock = cb
-}
-
-function SetOnKeyRefreshCallback(cb: () => void) {
-  onKeyRefreshCallback = cb
-}
-
-function buildQRSMessage(name: MessageType, payload: any): QRSMessage {
-  return {
-    name,
-    payload,
+  if (!keys.length) {
+    return null
   }
+
+  const [key] = keys
+  return key
 }
 
-// To log on golang side as well
-function hookQRSLog() {
-  const console = window.console
-  const log = console ? console.log : () => {}
-  // tslint:disable-next-line:no-console
-  console.log('Hooking log function')
-
-  // tslint:disable-next-line
-  console.log = function() {
-    // @ts-ignore
-    log.apply(console, arguments)
-    SendQRSMessage(MessageType.Log, arguments, () => {})
+/**
+ * Loads a private key from ASCII Armored format and unlocks it with the specified password
+ *
+ * @param key The ASCII Armored Private Key
+ * @param password Password to unlock the key
+ */
+export const loadPrivateKey = async (
+  key: string,
+  password: string | null,
+): Promise<any> => {
+  const { err, keys } = await openpgp.key.readArmored(key)
+  if (err && err.length) {
+    throw err[0]
   }
+  const [privateKey] = keys
+  if (password !== null) {
+    await privateKey.decrypt(password)
+  }
+  return privateKey
 }
 
-function SendQRSMessage(type: MessageType, payload: any, cb: MessageCallback) {
-  if (typeof astilectron !== 'undefined') {
-    astilectron.sendMessage(buildQRSMessage(type, payload), data => {
-      data = data || {}
-      cb(data.name, data.payload)
-    })
-  } else {
-    cb(MessageType.Error, 'no QRS Available')
+const getKeyFingerprint = (key: any): string => {
+  const fingerprint = key.getFingerprint().toString()
+  return fingerprint.toUpperCase().substr(fingerprint.length - 16, 16)
+}
+
+/**
+ * Converts a PGP Signature to Quanto format
+ *
+ * @param fingerprint Fingerprint of the key
+ * @param hash Hash used in the signature
+ * @param gpgSig the PGP Signature
+ */
+export const gpg2quanto = (
+  fingerprint: string,
+  hash: string,
+  gpgSig: string,
+): string => {
+  let cutSig = ''
+  let save = false
+  const fp = fingerprint.toUpperCase().substr(fingerprint.length - 16, 16)
+  const lines = gpgSig
+    .trim()
+    .replace('\r', '')
+    .split('\n')
+
+  for (let i = 1; i < lines.length - 1; i++) {
+    const line = lines[i].trim()
+    if (!save) {
+      // Wait for first empty line
+      if (line.length === 0) {
+        save = true
+      }
+    } else {
+      cutSig += line
+    }
+  }
+
+  return `${fp}_${hash.toUpperCase()}_${cutSig}`
+}
+
+/**
+ * Signs the data with the specified key and returns a PGP Signature
+ *
+ * @param key a pre-loaded and unlocked OpenPGP.js private key
+ * @param data the data to be signed
+ */
+export const signData = async (key: any, data: string): Promise<string> => {
+  const { signature: detachedSignature } = await openpgp.sign({
+    message: openpgp.cleartext.fromText(data),
+    privateKeys: [key],
+    detached: true,
+  })
+
+  return gpg2quanto(getKeyFingerprint(key), 'SHA512', detachedSignature)
+}
+
+async function openFile() {
+  return new Promise((resolve, reject) => {
+    const readFile = e => {
+      const file = e.target.files[0]
+      if (!file) {
+        reject('no file selected')
+        return
+      }
+      const reader = new FileReader()
+      reader.onload = e => {
+        // @ts-ignore
+        const contents = e.target.result
+        document.body.removeChild(fileInput)
+        resolve(contents)
+      }
+      reader.readAsText(file)
+    }
+    const fileInput = document.createElement('input')
+    fileInput.type = 'file'
+    fileInput.style.display = 'none'
+    fileInput.onchange = readFile
+    document.body.appendChild(fileInput)
+    fileInput.click()
+  })
+}
+
+async function LoadKeyFromComputer() {
+  let fileData
+  try {
+    fileData = await openFile()
+  } catch (e) {
+    // Eat error, no file selected
+  }
+  if (fileData) {
+    const key = await loadPrivateKey(fileData, null)
+    if (
+      !loadedKeys
+        .map(k => getKeyFingerprint(k))
+        .filter(fp => fp === getKeyFingerprint(key)).length
+    ) {
+      loadedKeys.push(key)
+    }
+    if (onKeyRefreshCallback) {
+      onKeyRefreshCallback()
+    }
   }
 }
 
 function GetPrivateKeys(callback: PrivateKeysCallback) {
-  SendQRSMessage(MessageType.ListPrivateKeys, {}, (name, payload) =>
-    HandleReturn(name, payload, callback),
-  )
+  const k = loadedKeys.map((k: any) => {
+    let identifier = ''
+    if (k.users.length) {
+      const { name, email } = k.users[0].userId
+      identifier = `${name} <${email}>`
+    }
+    return {
+      FingerPrint: getKeyFingerprint(k),
+      Identifier: identifier,
+      ContainsPrivateKey: k.isPrivate(),
+      PrivateKeyIsDecrypted: k.isDecrypted(),
+      Bits: k.getAlgorithmInfo().bits,
+    }
+  })
+  callback(k, null)
 }
 
 function UnlockKey(
-  fingerPrint: string,
+  fingerprint: string,
   password: string,
   callback: UnlockKeyCallback,
 ) {
-  SendQRSMessage(
-    MessageType.UnlockKey,
-    {
-      fingerPrint,
-      password,
-    },
-    (name, payload) => HandleReturn(name, payload, callback),
-  )
-}
+  const key = getLoadedKey(fingerprint)
+  if (!key) {
+    return callback('', new Error(`no such key ${fingerprint}`))
+  }
 
-function UnlockKeyPromise(fingerPrint: string, password: string) {
-  return new Promise<string>((resolve, reject) => {
-    UnlockKey(fingerPrint, password, (status: string, error: Error) => {
-      if (error) {
-        reject(error)
-      } else {
-        resolve(status)
-      }
+  if (key.isDecrypted()) {
+    return callback('ok', null)
+  }
+
+  key
+    .decrypt(password)
+    .then(() => {
+      callback('ok', null)
     })
-  })
+    .catch(err => {
+      callback('error', err)
+    })
 }
 
-function Sign(fingerPrint: string, data: string, callback: SignCallback) {
-  SendQRSMessage(
-    MessageType.Sign,
-    {
-      fingerPrint,
-      data,
-    },
-    (name, payload) => HandleReturn(name, payload, callback),
-  )
+function Sign(fingerprint: string, data: string, callback: SignCallback) {
+  const key = getLoadedKey(fingerprint)
+  if (!key) {
+    return callback('', new Error(`no such key ${fingerprint}`))
+  }
+
+  signData(key, data)
+    .then((signature: string) => callback(signature, null))
+    .catch(err => callback('', err))
 }
 
 async function SignPromise(fingerPrint: string, data: string): Promise<string> {
@@ -113,94 +207,46 @@ async function SignPromise(fingerPrint: string, data: string): Promise<string> {
   })
 }
 
-function HandleReturn(name, payload, callback) {
-  if (name === MessageType.Error) {
-    return callback(null, payload)
-  }
-
-  return callback(payload)
+function RegisterEvents(cb) {
+  // Nothing to to do right now
+  cb()
 }
 
-function RegisterEvent(cb) {
-  document.addEventListener('astilectron-ready', () => {
-    hookQRSLog()
-    // tslint:disable-next-line:no-console
-    console.log('Astilectron Web is ready')
-    astilectron.onMessage(message => {
-      if (message.name) {
-        switch (message.name) {
-          case MessageType.LoadPrivateKey:
-            LoadPrivateKey()
-            break
-          case MessageType.LoadPrivateKeyResult:
-            alert('Keys loaded successfully')
-            if (onKeyRefreshCallback) {
-              onKeyRefreshCallback()
-            }
-            break
-          case MessageType.Error:
-            if (Array.isArray(message.payload)) {
-              let lines = 'There was errors processing your request: \n'
-              for (let i = 0; i < message.payload.length; i++) {
-                const err = message.payload[i]
-                if (err && err.length > 0) {
-                  lines += `(${i}) ${JSON.stringify(err, null, 2)}`
-                }
-              }
-              alert(lines)
-            } else {
-              alert(`There was an error: ${message.payload}`)
-            }
-            break
-          default:
-            // tslint:disable-next-line:no-console
-            console.log(`Unknown message name: ${message.name}`)
-        }
-      }
-      return null
-    })
+let onKeyRefreshCallback: (() => void) | null
+let onKeyRequestUnlockCallback: ((fingerprint: string) => void) | null
 
-    if (cb) {
-      cb()
-    }
-  })
-}
-
-async function LoadPrivateKey() {
-  if (!electron) {
-    // tslint:disable-next-line:no-console
-    console.log('Loading electron')
-    electron = window.require('electron').remote
+function isKeyUnlocked(fingerprint: string): boolean {
+  const key = getLoadedKey(fingerprint)
+  if (key === null) {
+    throw new Error(`No such key ${fingerprint}`)
   }
 
-  const result = await electron.dialog.showOpenDialog({
-    properties: ['openFile', 'multiSelections'],
-    title: 'Select GPG Private Keys',
-  })
-
-  if (result.cancelled) {
-    return
-  }
-
-  SendQRSMessage(MessageType.LoadPrivateKey, result.filePaths, () => {})
+  return key.isDecrypted()
 }
 
-function RequestKeyUnlock(fingerPrint: string | boolean) {
-  needKeyUnlock = fingerPrint
-  if (onNeedKeyUnlock && fingerPrint !== false) {
-    onNeedKeyUnlock()
+function SetOnKeyRefreshCallback(cb: () => void) {
+  onKeyRefreshCallback = cb
+}
+
+function SetOnKeyRequestCallback(cb: (fingerprint: string) => void) {
+  onKeyRequestUnlockCallback = cb
+}
+
+function RequestKeyUnlock(fingerprint: string) {
+  if (onKeyRequestUnlockCallback) {
+    onKeyRequestUnlockCallback(fingerprint)
   }
 }
 
 export {
   GetPrivateKeys,
-  RegisterEvent,
-  SendQRSMessage,
+  RegisterEvents,
   UnlockKey,
   Sign,
   SignPromise,
-  UnlockKeyPromise,
-  RequestKeyUnlock,
-  SetOnNeedKeyUnlockCallback,
   SetOnKeyRefreshCallback,
+  isKeyUnlocked,
+  LoadKeyFromComputer,
+  RequestKeyUnlock,
+  SetOnKeyRequestCallback,
 }

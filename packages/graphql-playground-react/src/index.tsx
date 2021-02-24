@@ -1,16 +1,7 @@
 import * as React from 'react'
 import * as ReactDOM from 'react-dom'
 import './index.css'
-import {
-  GetPrivateKeys,
-  RegisterEvent,
-  SendQRSMessage,
-  UnlockKey,
-  Sign,
-  SignPromise,
-  RequestKeyUnlock,
-  // UnlockKeyPromise,
-} from './qrs/qrs'
+import { SignPromise, RegisterEvents, RequestKeyUnlock } from './qrs/qrs'
 import { ApolloLink } from 'apollo-link'
 import { FingerPrintHeaderName } from './qrs/models'
 import { LinkCreatorProps } from './state/sessions/fetchingSagas'
@@ -35,11 +26,14 @@ const customSignFetch = async (
         signBy = headers[FingerPrintHeaderName]
         if (signBy && signBy !== 'none') {
           const dBody = JSON.parse(`${body || '{}'}`)
-          dBody._timestamp = Date.now()
-          dBody._timeUniqueId = 'agent-ui-client'
-          const newBody = JSON.stringify(dBody)
-          headers['signature'] = `${await SignPromise(signBy, newBody)}`
-          init.body = newBody
+          if (dBody.operationName !== 'IntrospectionQuery') {
+            // Do not sign introspection
+            dBody._timestamp = Date.now()
+            dBody._timeUniqueId = 'agent-ui-client'
+            const newBody = JSON.stringify(dBody)
+            headers['signature'] = `${await SignPromise(signBy, newBody)}`
+            init.body = newBody
+          }
         }
         delete headers[FingerPrintHeaderName]
       }
@@ -54,6 +48,7 @@ const customSignFetch = async (
       init.headers
     ) {
       RequestKeyUnlock(signBy)
+      throw new Error('The key is not unlocked. Please unlock and try again')
     }
     throw e
   }
@@ -76,14 +71,7 @@ const customLinkCreator = (
 }
 
 /* tslint:disable-next-line */
-;(window as any)['QRS'] = {
-  GetPrivateKeys,
-  RegisterEvent,
-  SendQRSMessage,
-  UnlockKey,
-  Sign,
-  RequestKeyUnlock,
-}
+;(window as any)['QRS'] = { RegisterEvents }
 
 /* tslint:disable-next-line */
 ;(window as any)['GraphQLPlayground'] = {

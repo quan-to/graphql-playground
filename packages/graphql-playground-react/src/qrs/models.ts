@@ -1,21 +1,3 @@
-export interface QRSMessage {
-  name: MessageType
-  payload: any
-}
-
-export enum MessageType {
-  Error = 'error',
-  Log = 'log',
-  Sign = 'sign',
-  Encrypt = 'encrypt',
-  Decrypt = 'decrypt',
-  AddPrivateKey = 'addPrivateKey',
-  UnlockKey = 'unlockKey',
-  ListPrivateKeys = 'listKeys',
-  LoadPrivateKey = 'loadPrivateKey',
-  LoadPrivateKeyResult = 'loadPrivateKeyResult',
-}
-
 export interface KeyInfo {
   FingerPrint: string
   Identifier: string
@@ -24,13 +6,18 @@ export interface KeyInfo {
   PrivateKeyIsDecrypted: boolean
 }
 
-export type MessageCallback = (name, payload) => any
 export type PrivateKeysCallback = (
   keys: KeyInfo[],
   error: Error | void | null,
 ) => void
-export type UnlockKeyCallback = (status: string, error: Error) => void
-export type SignCallback = (signedData: string, error: Error) => void
+export type UnlockKeyCallback = (
+  status: string,
+  error: Error | void | null,
+) => void
+export type SignCallback = (
+  signedData: string,
+  error: Error | void | null,
+) => void
 
 export let FingerPrintHeaderName: string
 

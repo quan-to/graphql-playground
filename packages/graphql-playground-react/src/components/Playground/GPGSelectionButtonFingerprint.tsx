@@ -7,9 +7,9 @@ import { KeyInfo } from '../../qrs/models'
 
 export interface Props {
   keyInfo: KeyInfo
+  onSelect: (fingerprint: string) => void
   onMouseOver: (operation: any) => void
   onMouseOut: () => void
-  onMouseUp: (operation: any) => void
   highlight: string
   key: string
 }
@@ -24,20 +24,25 @@ class GPGSelectionButtonFingerprint extends React.PureComponent<Props> {
             ? 'selected'
             : ''
         }
+        data-fp={this.props.keyInfo.FingerPrint}
         onMouseOver={this.onMouseOver}
         onMouseOut={this.props.onMouseOut}
-        onMouseUp={this.onMouseUp}
+        onMouseDown={this.onDown}
       >
-        {this.props.keyInfo.Identifier}
+        {this.props.keyInfo.Identifier}{' '}
+        {this.props.keyInfo.FingerPrint !== ''
+          ? `(${this.props.keyInfo.FingerPrint})`
+          : ''}
       </li>
     )
   }
-  private onMouseOver = () => {
-    this.props.onMouseOver(this.props.keyInfo.FingerPrint)
+
+  private onDown = e => {
+    this.props.onSelect(e.currentTarget.dataset.fp)
   }
 
-  private onMouseUp = () => {
-    this.props.onMouseUp(this.props.keyInfo.FingerPrint)
+  private onMouseOver = () => {
+    this.props.onMouseOver(this.props.keyInfo.FingerPrint)
   }
 }
 
