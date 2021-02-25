@@ -1,6 +1,7 @@
 import { PrivateKeysCallback, UnlockKeyCallback, SignCallback } from './models'
 
-import * as openpgp from 'openpgp'
+// import * as openpgp from 'openpgp'
+declare var openpgp: any // Loaded in html
 
 const loadedKeys: any[] = []
 
