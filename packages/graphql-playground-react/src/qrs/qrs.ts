@@ -11,12 +11,12 @@ export let needKeyUnlock: string | boolean
 
 needKeyUnlock = false
 
-let onNeedKeyUnlock: (() => void) | null
+let onNeedKeyUnlock: ((fingerprint: string) => void) | null
 let onKeyRefreshCallback: (() => void) | null
 
 let electron: any = null
 
-function SetOnNeedKeyUnlockCallback(cb: () => void) {
+function SetOnNeedKeyUnlockCallback(cb: (fingerprint: string) => void) {
   onNeedKeyUnlock = cb
 }
 
@@ -185,10 +185,9 @@ async function LoadPrivateKey() {
   SendQRSMessage(MessageType.LoadPrivateKey, result.filePaths, () => {})
 }
 
-function RequestKeyUnlock(fingerPrint: string | boolean) {
-  needKeyUnlock = fingerPrint
-  if (onNeedKeyUnlock && fingerPrint !== false) {
-    onNeedKeyUnlock()
+function RequestKeyUnlock(fingerPrint: string) {
+  if (onNeedKeyUnlock) {
+    onNeedKeyUnlock(fingerPrint)
   }
 }
 

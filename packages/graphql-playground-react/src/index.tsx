@@ -35,11 +35,14 @@ const customSignFetch = async (
         signBy = headers[FingerPrintHeaderName]
         if (signBy && signBy !== 'none') {
           const dBody = JSON.parse(`${body || '{}'}`)
-          dBody._timestamp = Date.now()
-          dBody._timeUniqueId = 'agent-ui-client'
-          const newBody = JSON.stringify(dBody)
-          headers['signature'] = `${await SignPromise(signBy, newBody)}`
-          init.body = newBody
+          if (dBody.operationName !== 'IntrospectionQuery') {
+            // Do not sign introspection
+            dBody._timestamp = Date.now()
+            dBody._timeUniqueId = 'agent-ui-client'
+            const newBody = JSON.stringify(dBody)
+            headers['signature'] = `${await SignPromise(signBy, newBody)}`
+            init.body = newBody
+          }
         }
         delete headers[FingerPrintHeaderName]
       }
@@ -54,6 +57,7 @@ const customSignFetch = async (
       init.headers
     ) {
       RequestKeyUnlock(signBy)
+      throw new Error('The key is not unlocked. Please unlock and try again')
     }
     throw e
   }

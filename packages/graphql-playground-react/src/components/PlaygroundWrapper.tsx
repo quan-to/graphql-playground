@@ -27,12 +27,7 @@ import { Session, Tab } from '../state/sessions/reducers'
 import { ApolloLink } from 'apollo-link'
 import { injectTabs } from '../state/workspace/actions'
 import { buildSchema, buildClientSchema, GraphQLSchema } from 'graphql'
-import {
-  needKeyUnlock,
-  RequestKeyUnlock,
-  SetOnNeedKeyUnlockCallback,
-  UnlockKey,
-} from '../qrs/qrs'
+import { SetOnNeedKeyUnlockCallback, UnlockKey } from '../qrs/qrs'
 
 function getParameterByName(name: string, uri?: string): string | null {
   const url = uri || window.location.href
@@ -359,7 +354,6 @@ class PlaygroundWrapper extends React.Component<
   }
 
   render() {
-    const fingerPrint = needKeyUnlock
     const title = this.props.setTitle ? (
       <Helmet>
         <title>{this.getTitle()}</title>
@@ -369,10 +363,8 @@ class PlaygroundWrapper extends React.Component<
     const defaultHeaders = this.props.headers || {}
     const stateHeaders = this.state.headers || {}
     const combinedHeaders = { ...defaultHeaders, ...stateHeaders }
-    SetOnNeedKeyUnlockCallback(() => {
-      this.setState({
-        modalIsOpen: true,
-      })
+    SetOnNeedKeyUnlockCallback((fingerprint: string) => {
+      this.openModal(fingerprint)
     })
     const { theme } = this.props
     return (
@@ -436,22 +428,34 @@ class PlaygroundWrapper extends React.Component<
             />
             <div>
               <Modal
-                open={fingerPrint !== false}
+                open={this.state.modalIsOpen}
                 onClose={this.closeModal}
                 center={true}
               >
                 <div>
-                  The key {fingerPrint} is locked. Please type the password to
-                  unlock it.<br />
-                  <input
-                    placeholder="Key Password"
-                    type="password"
-                    value={this.state.password}
-                    onChange={this.onPasswordChange}
-                  />
                   <br />
-                  <button onClick={this.onPasswordFill}>OK</button>
+                  The key {this.state.fingerPrint} is locked. <br />
+                  Please type the password to unlock it.<br />
+                  <br />
+                  <div
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <input
+                      placeholder="Key Password"
+                      type="password"
+                      value={this.state.password}
+                      onChange={this.onPasswordChange}
+                    />
+                    <br />
+                    <button onClick={this.onPasswordFill}>Unlock Key</button>
+                  </div>
                 </div>
+                <br />
               </Modal>
             </div>
           </App>
@@ -466,9 +470,13 @@ class PlaygroundWrapper extends React.Component<
 
   onPasswordFill = () => {
     UnlockKey(
-      `${needKeyUnlock}`,
+      `${this.state.fingerPrint}`,
       this.state.password || '',
       (status, error) => {
+        this.setState({
+          modalIsOpen: false,
+          password: undefined,
+        })
         if (error) {
           alert(error)
         } else {
@@ -476,12 +484,6 @@ class PlaygroundWrapper extends React.Component<
         }
       },
     )
-    RequestKeyUnlock(false)
-    this.setState({
-      fingerPrint: null,
-      modalIsOpen: false,
-      password: undefined,
-    })
   }
 
   handleUpdateSessionCount = () => {

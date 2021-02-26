@@ -72,11 +72,6 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
       return
     }
 
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i]
-      // tslint:disable-next-line:no-console
-      console.log(`Key: ${key.Identifier} (${key.FingerPrint})`)
-    }
     this.setState({
       availableKeys: [
         {
@@ -111,15 +106,6 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
     } catch (e) {
       return
     }
-    // this.onKeysReceived([
-    //   {
-    //     FingerPrint: "0016A9CA870AFA59",
-    //     Identifier: "Jon HUEBR <jon@huebr.com>",
-    //     ContainsPrivateKey: true,
-    //     PrivateKeyIsDecrypted: false,
-    //     Bits: 4095,
-    //   }
-    // ], null)
   }
 
   getKey(fingerPrint: string): KeyInfo {
@@ -180,7 +166,7 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
               keyInfo={key}
               onMouseOver={this.handleMouseOver}
               onMouseOut={this.handleMouseOut}
-              onMouseUp={this.handleMouseUp}
+              onSelect={this.onOptionSelected}
               highlight={highlight}
             />
           ))}
@@ -215,33 +201,21 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
     this.setState({ highlight: null })
   }
 
-  private handleMouseUp = (fingerPrint: any) => {
-    this.onOptionSelected(fingerPrint)
-  }
-
   private onOptionSelected = fingerPrint => {
+    if (!this.state.optionsOpen) {
+      return
+    }
+
     fingerPrint = fingerPrint || 'none'
     if (typeof fingerPrint !== 'string') {
       return
     }
 
-    const { selectedFingerPrint } = this.state
-
-    if (selectedFingerPrint === fingerPrint) {
-      return
-    }
-
-    this.setState({
-      optionsOpen: false,
-      selectedFingerPrint: fingerPrint,
-    } as State)
     // tslint:disable-next-line:no-console
     console.log(`Selected FingerPrint: ${fingerPrint}`)
     let headers = this.props.getHeaders || '{}'
     try {
-      if (headers === '') {
-        headers = '{}'
-      }
+      headers = headers === '' ? '{}' : headers
       const headObj = JSON.parse(headers)
       if (fingerPrint === 'none') {
         delete headObj[FingerPrintHeaderName]
@@ -249,12 +223,16 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
         headObj[FingerPrintHeaderName] = fingerPrint
       }
       this.props.editHeaders(JSON.stringify(headObj, null, 2))
-    } catch (e) {
-      return
-    }
+    } catch (e) {}
+
     if (this.props.onGpgKeyChanged) {
       this.props.onGpgKeyChanged(fingerPrint)
     }
+
+    this.setState({
+      optionsOpen: false,
+      selectedFingerPrint: fingerPrint,
+    } as State)
   }
 
   private onOptionsOpen = downEvent => {
