@@ -15,7 +15,6 @@ import {
 } from './VariableEditor'
 import Spinner from '../Spinner'
 import Results from './Results'
-// import DownloadXLS from './DownloadXLS'
 // import ResponseTracing from './ResponseTracing'
 import { fillLeafs } from 'graphiql/dist/utility/fillLeafs'
 import { getLeft, getTop } from 'graphiql/dist/utility/elementPosition'
@@ -264,7 +263,6 @@ class GraphQLEditor extends React.PureComponent<Props & ReduxProps> {
               {/*  </ResponseTrackingTitle>*/}
               {/*  <ResponseTracing open={this.props.responseTracingOpen} />*/}
               {/*</ResponseTracking>*/}
-              {/*{this.props.responses && this.props.responses.size > 0? <DownloadXLS />:''}*/}
             </ResultWrap>
           </EditorBar>
         </EditorWrapper>

@@ -19,6 +19,7 @@ import {
   GetPrivateKeys,
   LoadKeyFromComputer,
   SetOnKeyRefreshCallback,
+  RequestKeyUnlock,
 } from '../../qrs/qrs'
 import { FingerPrintHeaderName, KeyInfo } from '../../qrs/models'
 
@@ -159,6 +160,7 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
       console.log(`Refreshing Keys`)
       GetPrivateKeys((keys, error) => this.onKeysReceived(keys, error))
       this.onOptionSelected(lastFingerprint)
+      RequestKeyUnlock(lastFingerprint)
     })
     const { availableKeys, selectedFingerPrint } = this.state
     const optionsOpen = this.state.optionsOpen
