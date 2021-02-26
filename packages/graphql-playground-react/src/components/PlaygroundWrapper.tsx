@@ -92,7 +92,6 @@ export interface State {
   schema?: GraphQLSchema
   modalIsOpen: boolean
   fingerPrint: string | null
-  password: string | undefined
 }
 
 class PlaygroundWrapper extends React.Component<
@@ -100,6 +99,7 @@ class PlaygroundWrapper extends React.Component<
   State
 > {
   playground: IPlayground
+  passwordInput: React.RefObject<HTMLInputElement>
 
   constructor(props: PlaygroundWrapperProps & ReduxProps) {
     super(props)
@@ -107,6 +107,7 @@ class PlaygroundWrapper extends React.Component<
 
     this.state = this.mapPropsToState(props)
     this.removeLoader()
+    this.passwordInput = React.createRef()
   }
 
   mapPropsToState(props: PlaygroundWrapperProps): State {
@@ -153,7 +154,6 @@ class PlaygroundWrapper extends React.Component<
       headers,
       modalIsOpen: false,
       fingerPrint: null,
-      password: undefined,
     }
   }
 
@@ -449,13 +449,11 @@ class PlaygroundWrapper extends React.Component<
                     onSubmit={this.onPasswordFill}
                   >
                     <input
-                      style={{
-                        border: '1px solid gray',
-                      }}
-                      placeholder="Key Password"
+                      style={{ border: '1px solid gray' }}
+                      placeholder="Key password"
                       type="password"
-                      value={this.state.password}
-                      onChange={this.onPasswordChange}
+                      name="password"
+                      ref={this.passwordInput}
                     />{' '}
                     <button type={'submit'}>Unlock Key</button>
                   </form>
@@ -469,19 +467,18 @@ class PlaygroundWrapper extends React.Component<
     )
   }
 
-  onPasswordChange = event => {
-    this.setState({ password: event.target.value })
-  }
-
   onPasswordFill = e => {
     e.preventDefault()
+    if (!this.passwordInput || !this.passwordInput.current) {
+      return
+    }
+
     UnlockKey(
       `${this.state.fingerPrint}`,
-      this.state.password || '',
+      this.passwordInput.current.value || '',
       (status, error) => {
         this.setState({
           modalIsOpen: false,
-          password: undefined,
         })
 
         if (error) {
