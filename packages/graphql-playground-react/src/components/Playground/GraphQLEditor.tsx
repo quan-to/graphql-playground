@@ -15,7 +15,8 @@ import {
 } from './VariableEditor'
 import Spinner from '../Spinner'
 import Results from './Results'
-import ResponseTracing from './ResponseTracing'
+// import DownloadXLS from './DownloadXLS'
+// import ResponseTracing from './ResponseTracing'
 import { fillLeafs } from 'graphiql/dist/utility/fillLeafs'
 import { getLeft, getTop } from 'graphiql/dist/utility/elementPosition'
 
@@ -248,20 +249,22 @@ class GraphQLEditor extends React.PureComponent<Props & ReduxProps> {
               {this.props.subscriptionActive && (
                 <Listening>Listening &hellip;</Listening>
               )}
-              <ResponseTracking
-                isOpen={this.props.responseTracingOpen}
-                height={this.props.responseTracingHeight}
-              >
-                <ResponseTrackingTitle
-                  isOpen={this.props.responseTracingOpen}
-                  onMouseDown={this.handleTracingResizeStart}
-                >
-                  <VariableEditorSubtitle isOpen={false}>
-                    Tracing
-                  </VariableEditorSubtitle>
-                </ResponseTrackingTitle>
-                <ResponseTracing open={this.props.responseTracingOpen} />
-              </ResponseTracking>
+
+              {/*<ResponseTracking*/}
+              {/*  isOpen={this.props.responseTracingOpen}*/}
+              {/*  height={this.props.responseTracingHeight}*/}
+              {/*>*/}
+              {/*  <ResponseTrackingTitle*/}
+              {/*    isOpen={this.props.responseTracingOpen}*/}
+              {/*    onMouseDown={this.handleTracingResizeStart}*/}
+              {/*  >*/}
+              {/*    <VariableEditorSubtitle isOpen={false}>*/}
+              {/*      Tracing*/}
+              {/*    </VariableEditorSubtitle>*/}
+              {/*  </ResponseTrackingTitle>*/}
+              {/*  <ResponseTracing open={this.props.responseTracingOpen} />*/}
+              {/*</ResponseTracking>*/}
+              {/*{this.props.responses && this.props.responses.size > 0? <DownloadXLS />:''}*/}
             </ResultWrap>
           </EditorBar>
         </EditorWrapper>
@@ -461,44 +464,44 @@ class GraphQLEditor extends React.PureComponent<Props & ReduxProps> {
     )
   }
 
-  private handleTracingResizeStart = downEvent => {
-    downEvent.preventDefault()
-
-    let didMove = false
-    const hadHeight = this.props.responseTracingHeight
-    const offset = downEvent.clientY - getTop(downEvent.target)
-
-    let onMouseMove: any = moveEvent => {
-      if (moveEvent.buttons === 0) {
-        return onMouseUp()
-      }
-
-      didMove = true
-
-      const editorBar = ReactDOM.findDOMNode(this.editorBarComponent)
-      const topSize = moveEvent.clientY - getTop(editorBar) - offset
-      const bottomSize = editorBar.clientHeight - topSize
-      if (bottomSize < 60) {
-        this.props.closeTracing(hadHeight)
-      } else {
-        this.props.openTracing(hadHeight)
-      }
-    }
-
-    let onMouseUp: any = () => {
-      if (!didMove) {
-        this.props.toggleTracing()
-      }
-
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
-      onMouseMove = null
-      onMouseUp = null
-    }
-
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
-  }
+  // private handleTracingResizeStart = downEvent => {
+  //   downEvent.preventDefault()
+  //
+  //   let didMove = false
+  //   const hadHeight = this.props.responseTracingHeight
+  //   const offset = downEvent.clientY - getTop(downEvent.target)
+  //
+  //   let onMouseMove: any = moveEvent => {
+  //     if (moveEvent.buttons === 0) {
+  //       return onMouseUp()
+  //     }
+  //
+  //     didMove = true
+  //
+  //     const editorBar = ReactDOM.findDOMNode(this.editorBarComponent)
+  //     const topSize = moveEvent.clientY - getTop(editorBar) - offset
+  //     const bottomSize = editorBar.clientHeight - topSize
+  //     if (bottomSize < 60) {
+  //       this.props.closeTracing(hadHeight)
+  //     } else {
+  //       this.props.openTracing(hadHeight)
+  //     }
+  //   }
+  //
+  //   let onMouseUp: any = () => {
+  //     if (!didMove) {
+  //       this.props.toggleTracing()
+  //     }
+  //
+  //     document.removeEventListener('mousemove', onMouseMove)
+  //     document.removeEventListener('mouseup', onMouseUp)
+  //     onMouseMove = null
+  //     onMouseUp = null
+  //   }
+  //
+  //   document.addEventListener('mousemove', onMouseMove)
+  //   document.addEventListener('mouseup', onMouseUp)
+  // }
 
   private handleVariableResizeStart = downEvent => {
     downEvent.preventDefault()
@@ -708,18 +711,18 @@ const VariableEditorSubtitle = styled<TitleProps, 'span'>('span')`
   }
 `
 
-const ResponseTracking = styled(BottomDrawer)`
-  background: ${p => p.theme.editorColours.rightDrawerBackground};
-`
-
-const ResponseTrackingTitle = styled<TitleProps>(({ isOpen, ...rest }) => (
-  <BottomDrawerTitle {...rest} />
-))`
-  text-align: right;
-  background: ${p => p.theme.editorColours.rightDrawerBackground};
-  cursor: ${props => (props.isOpen ? 's-resize' : 'n-resize')};
-  color: ${p => p.theme.editorColours.drawerTextInactive};
-`
+// const ResponseTracking = styled(BottomDrawer)`
+//   background: ${p => p.theme.editorColours.rightDrawerBackground};
+// `
+//
+// const ResponseTrackingTitle = styled<TitleProps>(({ isOpen, ...rest }) => (
+//   <BottomDrawerTitle {...rest} />
+// ))`
+//   text-align: right;
+//   background: ${p => p.theme.editorColours.rightDrawerBackground};
+//   cursor: ${props => (props.isOpen ? 's-resize' : 'n-resize')};
+//   color: ${p => p.theme.editorColours.drawerTextInactive};
+// `
 
 interface QueryProps {
   flex: number
