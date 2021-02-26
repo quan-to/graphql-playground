@@ -389,7 +389,7 @@ class PlaygroundWrapper extends React.Component<
               this.state.activeEnv && (
                 <ProjectsSideNav
                   config={this.props.config}
-                  folderName={this.props.folderName || 'GraphQL App'}
+                  folderName={this.props.folderName || 'Quanto API'}
                   theme={theme}
                   activeEnv={this.state.activeEnv}
                   onSelectEnv={this.handleSelectEnv}
@@ -439,23 +439,26 @@ class PlaygroundWrapper extends React.Component<
                   The key {this.state.fingerPrint} is locked. <br />
                   Please type the password to unlock it.<br />
                   <br />
-                  <div
+                  <form
                     style={{
                       width: '100%',
                       display: 'flex',
                       justifyContent: 'center',
                       alignItems: 'center',
                     }}
+                    onSubmit={this.onPasswordFill}
                   >
                     <input
+                      style={{
+                        border: '1px solid gray',
+                      }}
                       placeholder="Key Password"
                       type="password"
                       value={this.state.password}
                       onChange={this.onPasswordChange}
-                    />
-                    <br />
-                    <button onClick={this.onPasswordFill}>Unlock Key</button>
-                  </div>
+                    />{' '}
+                    <button type={'submit'}>Unlock Key</button>
+                  </form>
                 </div>
                 <br />
               </Modal>
@@ -470,7 +473,8 @@ class PlaygroundWrapper extends React.Component<
     this.setState({ password: event.target.value })
   }
 
-  onPasswordFill = () => {
+  onPasswordFill = e => {
+    e.preventDefault()
     UnlockKey(
       `${this.state.fingerPrint}`,
       this.state.password || '',
@@ -485,7 +489,7 @@ class PlaygroundWrapper extends React.Component<
           return
         }
 
-        alert(`Key ${this.state.fingerPrint} unlocked!`)
+        // alert(`Key ${this.state.fingerPrint} unlocked!`)
       },
     )
   }
