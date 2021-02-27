@@ -45,7 +45,7 @@ export const defaultSettings: ISettings = {
   'editor.fontFamily': `'Source Code Pro', 'Consolas', 'Inconsolata', 'Droid Sans Mono', 'Monaco', monospace`,
   'editor.fontSize': 14,
   'editor.reuseHeaders': true,
-  'editor.theme': 'dark',
+  'editor.theme': 'light',
   'general.betaUpdates': false,
   'prettier.printWidth': 80,
   'prettier.tabWidth': 2,

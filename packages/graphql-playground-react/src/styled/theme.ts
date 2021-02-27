@@ -223,7 +223,7 @@ export const darkEditorColours: EditorColours = {
   pollingIcon: 'rgba(139, 149, 156, 1)',
   pollingIconShadow: 'rgba(139, 149, 156, 0.4)',
   button: '#0F202D',
-  buttonHover: '#122535',
+  buttonHover: 'rgba(216,219,222, 0.2)',
   buttonText: 'rgba(255,255,255,0.6)',
   buttonWorkspace: '#b9bfc4',
   buttonWorkspaceHover: '#a4acb2',
@@ -281,7 +281,7 @@ export const lightEditorColours: EditorColours = {
   pollingIcon: 'rgba(139, 149, 156, 1)',
   pollingIconShadow: 'rgba(139, 149, 156, 0.4)',
   button: '#d8dbde',
-  buttonHover: 'rgba(20, 37, 51, 0.2)',
+  buttonHover: 'rgba(216,219,222, 0.2)',
   buttonText: 'rgba(23, 42, 58, 0.8)',
   buttonWorkspace: 'rgb(185, 191, 196)',
   buttonWorkspaceHover: 'rgb(157, 166, 173)',
@@ -341,10 +341,10 @@ export interface ThemeInterface {
 }
 
 export const theme: any = {
-  mode: 'dark',
-  colours: darkColours,
+  mode: 'light',
+  colours: lightColours,
   sizes,
   shorthands,
-  editorColours: darkEditorColours,
+  editorColours: lightEditorColours,
   settings: defaultSettings,
 }

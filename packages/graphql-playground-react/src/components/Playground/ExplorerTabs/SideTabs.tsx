@@ -143,7 +143,7 @@ class SideTabs extends React.Component<
           onKeyDown={this.handleKeyDown}
           onMouseMove={this.handleMouseMove}
           tabIndex={activeTabIdx}
-          color={activeTab && activeTab.props.activeColor}
+          color={(activeTab && activeTab.props.activeColor) || ''}
           ref={this.setContentContainerRef}
         >
           {activeTab &&

@@ -54,11 +54,11 @@ class TopBar extends React.Component<Props, {}> {
     const { endpointUnreachable, settings } = this.props
     return (
       <TopBarWrapper>
-        <Button onClick={this.props.prettifyQuery}>Prettify</Button>
-        <Button onClick={this.openHistory}>History</Button>
         <GPGWrapper>
           <GPGSelectionButton onGpgKeyChanged={this.props.onGpgKeyChanged} />
         </GPGWrapper>
+        <Button onClick={this.props.prettifyQuery}>💅 Prettify</Button>
+        <Button onClick={this.openHistory}>📜 History</Button>
         <UrlBarWrapper>
           <UrlBar
             value={this.props.endpoint}

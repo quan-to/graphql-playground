@@ -19,6 +19,7 @@ import {
   GetPrivateKeys,
   LoadKeyFromComputer,
   SetOnKeyRefreshCallback,
+  RequestKeyUnlock,
 } from '../../qrs/qrs'
 import { FingerPrintHeaderName, KeyInfo } from '../../qrs/models'
 
@@ -111,6 +112,10 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
     }
   }
 
+  componentDidMount() {
+    this.onOptionSelected('none')
+  }
+
   getKey(fingerPrint: string): KeyInfo {
     const { availableKeys } = this.state
     for (let i = 0; i < availableKeys.length; i++) {
@@ -137,12 +142,12 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
         selectedFingerPrint !== 'none' &&
         headers[FingerPrintHeaderName] !== selectedFingerPrint
       ) {
-        this.onOptionSelected(selectedFingerPrint)
+        // this.onOptionSelected(selectedFingerPrint)
       } else if (
         selectedFingerPrint === 'none' &&
         typeof headers[FingerPrintHeaderName] !== 'undefined'
       ) {
-        this.onOptionSelected('none')
+        // this.onOptionSelected('none')
       }
     } catch (e) {
       return
@@ -150,10 +155,12 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
   }
 
   render() {
-    SetOnKeyRefreshCallback(() => {
+    SetOnKeyRefreshCallback((lastFingerprint: string) => {
       // tslint:disable-next-line:no-console
       console.log(`Refreshing Keys`)
       GetPrivateKeys((keys, error) => this.onKeysReceived(keys, error))
+      this.onOptionSelected(lastFingerprint)
+      RequestKeyUnlock(lastFingerprint)
     })
     const { availableKeys, selectedFingerPrint } = this.state
     const optionsOpen = this.state.optionsOpen
@@ -166,7 +173,7 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
             key={'Load key key'}
             keyInfo={{
               FingerPrint: '',
-              Identifier: 'Open Key',
+              Identifier: 'Open key...',
               ContainsPrivateKey: false,
               PrivateKeyIsDecrypted: false,
               Bits: 0,
@@ -193,10 +200,10 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
     let selectedBox: any = null
 
     if (selectedFingerPrint === 'none') {
-      selectedBox = <div>No Key</div>
+      selectedBox = <div>🔑 Choose key...</div>
     } else {
       const key = this.getKey(selectedFingerPrint)
-      selectedBox = <div>{key.FingerPrint}</div>
+      selectedBox = <div>🔑 {key.FingerPrint}</div>
     }
 
     return (
@@ -222,10 +229,6 @@ class GPGSelectionButton extends React.Component<ReduxProps, State> {
   }
 
   private onOptionSelected = fingerPrint => {
-    if (!this.state.optionsOpen) {
-      return
-    }
-
     fingerPrint = fingerPrint || 'none'
     if (typeof fingerPrint !== 'string') {
       return
@@ -326,7 +329,7 @@ const Button = styled.button`
 const GPGOptions = styled.ul`
   max-height: 300px;
   position: absolute;
-  left: 140px;
+  left: 15px;
   z-index: 1000;
 
   align-items: center;
@@ -343,7 +346,13 @@ const GPGOptions = styled.ul`
     align-items: center;
     justify-content: center;
     padding: 10px 20px 10px 20px;
-    border-radius: 10px 10px 10px 10px;
+    border-radius: 0px;
+  }
+  li:first-child {
+    border-radius: 10px 10px 0px 0px;
+  }
+  li:last-child {
+    border-radius: 0px 0px 10px 10px;
   }
 
   li.selected {

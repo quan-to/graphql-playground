@@ -138,7 +138,7 @@ async function LoadKeyFromComputer() {
       loadedKeys.push(key)
     }
     if (onKeyRefreshCallback) {
-      onKeyRefreshCallback()
+      onKeyRefreshCallback(getKeyFingerprint(key))
     }
   }
 }
@@ -213,7 +213,7 @@ function RegisterEvents(cb) {
   cb()
 }
 
-let onKeyRefreshCallback: (() => void) | null
+let onKeyRefreshCallback: ((lastFingerprint: string) => void) | null
 let onKeyRequestUnlockCallback: ((fingerprint: string) => void) | null
 
 function isKeyUnlocked(fingerprint: string): boolean {
@@ -225,7 +225,7 @@ function isKeyUnlocked(fingerprint: string): boolean {
   return key.isDecrypted()
 }
 
-function SetOnKeyRefreshCallback(cb: () => void) {
+function SetOnKeyRefreshCallback(cb: (lastFingerprint: string) => void) {
   onKeyRefreshCallback = cb
 }
 

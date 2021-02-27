@@ -16,6 +16,8 @@ export interface Props {
 
 class GPGSelectionButtonFingerprint extends React.PureComponent<Props> {
   render() {
+    const isNone = this.props.keyInfo.Identifier === 'None'
+    const isEmpty = this.props.keyInfo.FingerPrint === ''
     return (
       <li
         key={this.props.keyInfo.FingerPrint}
@@ -29,10 +31,8 @@ class GPGSelectionButtonFingerprint extends React.PureComponent<Props> {
         onMouseOut={this.props.onMouseOut}
         onMouseDown={this.onDown}
       >
-        {this.props.keyInfo.Identifier}{' '}
-        {this.props.keyInfo.FingerPrint !== ''
-          ? `(${this.props.keyInfo.FingerPrint})`
-          : ''}
+        {isNone ? <i>None</i> : `${this.props.keyInfo.Identifier}`}
+        {isEmpty || isNone ? '' : ` (${this.props.keyInfo.FingerPrint})`}
       </li>
     )
   }
