@@ -122,6 +122,7 @@
     "isomorphic-fetch": "^2.2.1",
     "js-yaml": "^3.10.0",
     "json-stable-stringify": "^1.0.1",
+    "json-string-formatter": "^1.0.1",
     "keycode": "^2.1.9",
     "lodash": "^4.17.11",
     "lodash.debounce": "^4.0.8",
