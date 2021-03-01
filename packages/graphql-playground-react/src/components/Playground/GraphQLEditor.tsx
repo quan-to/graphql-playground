@@ -2,6 +2,7 @@ import * as React from 'react'
 import * as ReactDOM from 'react-dom'
 import { isNamedType, GraphQLSchema } from 'graphql'
 import { List } from 'immutable'
+import { format as jsonFormatter } from 'json-string-formatter'
 
 // Query & Response Components
 import ExecuteButton from './ExecuteButton'
@@ -66,6 +67,7 @@ import {
   fetchSchema,
 } from '../../state/sessions/actions'
 import { ResponseRecord } from '../../state/sessions/reducers'
+import { Button } from '../Button'
 
 /**
  * The top-level React component for GraphQLEditor, intended to encompass the entire
@@ -248,6 +250,17 @@ class GraphQLEditor extends React.PureComponent<Props & ReduxProps> {
               {this.props.subscriptionActive && (
                 <Listening>Listening &hellip;</Listening>
               )}
+
+              {!this.props.queryRunning &&
+                this.props.responses &&
+                this.props.responses.size > 0 && (
+                  <Button
+                    // tslint:disable-next-line:jsx-no-lambda
+                    onClick={() => this.downloadJson(this.props.responses)}
+                  >
+                    Download JSON
+                  </Button>
+                )}
 
               {/*<ResponseTracking*/}
               {/*  isOpen={this.props.responseTracingOpen}*/}
@@ -565,6 +578,19 @@ class GraphQLEditor extends React.PureComponent<Props & ReduxProps> {
         }
       }
     }
+  }
+
+  private downloadJson(data) {
+    const a = document.createElement('a')
+    document.body.appendChild(a)
+    const json = jsonFormatter(data.get(0)._values.get(1))
+    const fileName = `quanto-result-${data.get(0)._values.get(0)}.json`
+    const blob = new Blob([json], { type: 'octet/stream' })
+    const url = window.URL.createObjectURL(blob)
+    a.href = url
+    a.download = fileName
+    a.click()
+    window.URL.revokeObjectURL(url)
   }
 }
 
